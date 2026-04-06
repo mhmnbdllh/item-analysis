@@ -447,7 +447,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     'Upper_N', 'Lower_N',
                     'Prop_Upper', 'Prop_Lower',
                     'DDI', 'DDI_Interpretation',
-                    '≥5%?', 'Low > High?'
+                    'Min_5_Pct', 'LowerGreaterThanUpper'
                 ])
                 
                 st.dataframe(df_distractor, use_container_width=True)
