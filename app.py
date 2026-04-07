@@ -1,7 +1,7 @@
 # ======================================================================
-# ITEM ANALYSIS - STREAMLIT VERSION (COMPLETE + DATA SUMMARY)
+# ITEM ANALYSIS - STREAMLIT VERSION (COMPLETE + OPTIMIZED)
 # ======================================================================
-# COMPLETE FEATURES:
+# COMPLETE FEATURES (ALL PRESERVED):
 # 1. p (difficulty index)
 # 2. q (1-p)
 # 3. pq (item variance)
@@ -18,7 +18,7 @@
 # 14. ALL 11 VISUALIZATIONS (complete)
 # 15. Multi-sheet Excel export (complete)
 # 16. Max file size 5MB
-# 17. DATA SUMMARY table for verification
+# 17. DATA SUMMARY table
 # ======================================================================
 
 import streamlit as st
@@ -67,13 +67,12 @@ with st.sidebar:
     group_percent = st.slider("Upper/Lower Group Percentage", min_value=10, max_value=50, value=27, step=1)
     
     st.markdown("---")
-    st.caption("Scripted by Muhaimin Abdullah")
-    st.caption("Based on Classical Test Theory (CTT)")
+    st.caption("Scripted by Muhaimin Abdullah | Based on Classical Test Theory (CTT)")
 
 # ======================================================================
 # FUNCTIONS
 # ======================================================================
-def interpret_p(p, difficult_threshold, easy_threshold):
+def interpret_p(p):
     if p < difficult_threshold:
         return "Difficult"
     elif p <= easy_threshold:
@@ -81,7 +80,7 @@ def interpret_p(p, difficult_threshold, easy_threshold):
     else:
         return "Easy"
 
-def interpret_d(d, poor_threshold, good_threshold):
+def interpret_d(d):
     if d < poor_threshold:
         return "Poor"
     elif d < good_threshold:
@@ -96,6 +95,14 @@ def interpret_ddi(ddi):
         return "Neutral"
     else:
         return "Non-Functional"
+
+def get_recommendation(p, d, r):
+    if r >= valid_threshold and d >= poor_threshold and difficult_threshold <= p <= easy_threshold:
+        return "RETAIN"
+    elif r < 0.10 or d < 0.10:
+        return "DROP"
+    else:
+        return "REVISE"
 
 # ======================================================================
 # INITIALIZE SESSION STATE
@@ -254,6 +261,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     r_it, _ = pointbiserialr(df_scores[item], total_minus_item)
                 r_values.append(r_it)
                 
+                # Alpha if item deleted
                 total_without = df['total_score'] - df_scores[item]
                 var_without = total_without.var(ddof=1)
                 pq_without = 0
@@ -267,16 +275,11 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     alpha = 0
                 alpha_if_deleted_values.append(alpha)
                 
-                p_int = interpret_p(p_val, difficult_threshold, easy_threshold)
-                d_int = interpret_d(d_val, poor_threshold, good_threshold)
+                # Interpretations & Recommendation
+                p_int = interpret_p(p_val)
+                d_int = interpret_d(d_val)
                 v_int = "Valid" if r_it >= valid_threshold else "Invalid"
-                
-                if r_it >= valid_threshold and d_val >= poor_threshold and difficult_threshold <= p_val <= easy_threshold:
-                    rec = "RETAIN"
-                elif r_it < 0.10 or d_val < 0.10:
-                    rec = "DROP"
-                else:
-                    rec = "REVISE"
+                rec = get_recommendation(p_val, d_val, r_it)
                 
                 results.append([
                     item, 
@@ -359,9 +362,9 @@ if st.session_state.file_loaded and st.session_state.df is not None:
             # DISPLAY RESULTS IN TAB2
             # ==================================================================
             with tab2:
-                # ==============================================================
-                # SECTION 0: DATA SUMMARY (Informasi Dasar untuk Pengecekan)
-                # ==============================================================
+                # --------------------------------------------------------------
+                # DATA SUMMARY
+                # --------------------------------------------------------------
                 st.markdown("## 📋 DATA SUMMARY")
                 
                 mean_score = df['total_score'].mean()
@@ -405,56 +408,77 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                 df_summary = pd.DataFrame(summary_data)
                 st.dataframe(df_summary, use_container_width=True)
                 
-                if all(s == max_score for s in upper_group_scores):
-                    st.info("ℹ️ **Note:** Upper group achieved perfect scores on all items. This explains why Upper_N = 0 in distractor analysis (no high-ability students selected distractors).")
+                # --------------------------------------------------------------
+                # RELIABILITY SUMMARY WITH INTERPRETATION
+                # --------------------------------------------------------------
+                st.markdown("## 📊 RELIABILITY SUMMARY")
                 
-                # ==============================================================
-                # SECTION 1: ITEM ANALYSIS SUMMARY
-                # ==============================================================
-                st.markdown("## 📋 ITEM ANALYSIS SUMMARY")
-                st.markdown("Below are the key statistics for your test and items.")
-                
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Number of Students", n_students)
-                with col2:
-                    st.metric("Number of Items", n_items)
-                with col3:
-                    st.metric("Response Mode", "MULTIPLE_CHOICE")
-                with col4:
                     st.metric("KR-20", f"{kr20:.4f}")
-                
-                col1, col2 = st.columns(2)
-                with col1:
                     if kr20 >= 0.80:
-                        st.success(f"✅ **Reliability:** {kr20:.4f} (Very Good - suitable for high-stakes testing)")
+                        st.success("✅ Very Good (suitable for high-stakes testing)")
+                        st.caption("**Interpretation:** The test has excellent internal consistency. Results are highly reliable.")
                     elif kr20 >= 0.70:
-                        st.info(f"📘 **Reliability:** {kr20:.4f} (Good - suitable for classroom exams)")
+                        st.info("📘 Good (suitable for classroom exams)")
+                        st.caption("**Interpretation:** The test has acceptable internal consistency for most educational purposes.")
                     elif kr20 >= 0.60:
-                        st.warning(f"⚠️ **Reliability:** {kr20:.4f} (Fair - acceptable for exploratory research)")
+                        st.warning("⚠️ Fair (acceptable for exploratory research)")
+                        st.caption("**Interpretation:** The test has marginal reliability. Consider improving weak items.")
                     else:
-                        st.error(f"❌ **Reliability:** {kr20:.4f} (Poor - needs significant improvement)")
+                        st.error("❌ Poor (needs significant improvement)")
+                        st.caption("**Interpretation:** The test lacks internal consistency. Major revision recommended.")
                 
                 with col2:
-                    st.info(f"📏 **Standard Error of Measurement (SEM):** {sem:.4f}")
-                    st.caption(f"95% Confidence Interval: ±{sem*1.96:.2f} points")
-                    st.caption(f"Σpq = {sum_pq:.4f} | Total Variance = {total_variance:.4f}")
+                    st.metric("SEM", f"{sem:.4f}")
+                    st.caption(f"95% CI: ±{sem*1.96:.2f} points")
+                    st.caption("**Interpretation:** Individual scores may vary within this range due to measurement error.")
                 
-                # ==============================================================
-                # SECTION 2: COMPLETE ITEM STATISTICS TABLE
-                # ==============================================================
+                with col3:
+                    st.metric("Σpq", f"{sum_pq:.4f}")
+                    st.caption(f"Total Variance: {total_variance:.4f}")
+                    st.caption("**Interpretation:** Σpq is the sum of item variances used in KR-20 calculation.")
+                
+                # --------------------------------------------------------------
+                # COMPLETE ITEM STATISTICS TABLE
+                # --------------------------------------------------------------
                 st.markdown("---")
                 st.markdown("## 📊 COMPLETE ITEM STATISTICS")
                 st.caption("This table shows all psychometric properties for each test item.")
+                st.caption("**Color coding:** p (Green=Moderate, Red=Difficult, Orange=Easy) | D (Green=Very Good, Orange=Fair, Red=Poor) | r_it (Green=Valid, Red=Invalid)")
                 
-                st.dataframe(df_results, use_container_width=True)
+                # Color coding function
+                def color_val(val, col):
+                    if col == 'p':
+                        if val < difficult_threshold:
+                            return 'background-color: #ffcccc'
+                        elif val <= easy_threshold:
+                            return 'background-color: #ccffcc'
+                        else:
+                            return 'background-color: #ffe6cc'
+                    elif col == 'D':
+                        if val < poor_threshold:
+                            return 'background-color: #ffcccc'
+                        elif val < good_threshold:
+                            return 'background-color: #ffe6cc'
+                        else:
+                            return 'background-color: #ccffcc'
+                    elif col == 'r_it':
+                        if val >= valid_threshold:
+                            return 'background-color: #ccffcc'
+                        else:
+                            return 'background-color: #ffcccc'
+                    return ''
                 
-                # ==============================================================
-                # SECTION 3: DISTRACTOR ANALYSIS WITH DDI + EXTRA COLUMNS
-                # ==============================================================
+                styled_df = df_results.style.applymap(lambda x, col: color_val(x, col) if isinstance(x, (int, float)) else '', subset=['p', 'D', 'r_it'])
+                st.dataframe(styled_df, use_container_width=True)
+                
+                # --------------------------------------------------------------
+                # DISTRACTOR ANALYSIS
+                # --------------------------------------------------------------
                 if distractor_results:
                     st.markdown("---")
-                    st.markdown("## 🎯 DISTRACTOR ANALYSIS WITH DDI")
+                    st.markdown("## 🎯 DISTRACTOR ANALYSIS")
                     st.caption("**DDI (Distractor Discrimination Index)** = Proportion Lower - Proportion Upper | DDI > 0 indicates a functional distractor")
                     st.caption("**Criteria for functional distractor:** (1) Selected by >=5% of students, (2) More low-ability than high-ability students choose them")
                     
@@ -481,9 +505,9 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     df_ddi_summary = pd.DataFrame(ddi_summary, columns=['Item', 'Num_Distractors', 'Mean_DDI', 'Functional_Count'])
                     st.dataframe(df_ddi_summary, use_container_width=True)
                 
-                # ==============================================================
-                # SECTION 4: VISUALIZATIONS (ALL 11 CHARTS)
-                # ==============================================================
+                # --------------------------------------------------------------
+                # VISUALIZATIONS (ALL 11 CHARTS)
+                # --------------------------------------------------------------
                 st.markdown("---")
                 st.markdown("## 📊 VISUALIZATIONS")
                 st.caption("The following charts provide visual interpretation of item statistics.")
@@ -496,8 +520,8 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     fig1, ax1 = plt.subplots(figsize=(8, 5))
                     colors_p = ['red' if x < difficult_threshold else ('green' if x <= easy_threshold else 'orange') for x in p_values]
                     ax1.bar(range(1, n_items+1), p_values, color=colors_p)
-                    ax1.axhline(difficult_threshold, color='red', linestyle='--', label=f'Difficult Threshold ({difficult_threshold})')
-                    ax1.axhline(easy_threshold, color='orange', linestyle='--', label=f'Easy Threshold ({easy_threshold})')
+                    ax1.axhline(difficult_threshold, color='red', linestyle='--', label=f'Difficult (<{difficult_threshold})')
+                    ax1.axhline(easy_threshold, color='orange', linestyle='--', label=f'Easy (>{easy_threshold})')
                     ax1.set_xlabel('Item Number')
                     ax1.set_ylabel('Difficulty Index (p)')
                     ax1.set_title('Item Difficulty: Red=Difficult, Green=Moderate, Orange=Easy')
@@ -525,7 +549,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig2)
                     plt.close()
                 
-                # Row 2: Validity and Proportion of Incorrect (q)
+                # Row 2: Validity and q
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -533,7 +557,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     fig3, ax3 = plt.subplots(figsize=(8, 5))
                     colors_r = ['green' if x >= valid_threshold else 'red' for x in r_values]
                     ax3.bar(range(1, n_items+1), r_values, color=colors_r)
-                    ax3.axhline(valid_threshold, color='green', linestyle='--', label=f'Valid Threshold (≥{valid_threshold})')
+                    ax3.axhline(valid_threshold, color='green', linestyle='--', label=f'Valid (≥{valid_threshold})')
                     ax3.axhline(0, color='black', linestyle='-', linewidth=0.5)
                     ax3.set_xlabel('Item Number')
                     ax3.set_ylabel('Corrected Item-Total Correlation (r_it)')
@@ -558,7 +582,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig4)
                     plt.close()
                 
-                # Row 3: Upper vs Lower Group Comparison and Recommendations
+                # Row 3: Upper vs Lower and Recommendations
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -593,7 +617,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig6)
                     plt.close()
                 
-                # Row 4: Score Distribution and Recommendation Pie Chart
+                # Row 4: Score Distribution and Pie Chart
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -653,7 +677,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig8)
                     plt.close()
                 
-                # Row 5: Standard Error and Alpha if Deleted
+                # Row 5: SE and Alpha if Deleted
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -689,7 +713,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig10)
                     plt.close()
                 
-                # Row 6: Correlation Heatmap
+                # Row 6: Heatmap
                 if n_items > 1:
                     st.markdown("### 11. Inter-Item Correlation Heatmap")
                     fig11, ax11 = plt.subplots(figsize=(max(8, n_items*0.5), max(6, n_items*0.4)))
@@ -702,9 +726,9 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.pyplot(fig11)
                     plt.close()
                 
-                # ==============================================================
-                # SECTION 5: DOWNLOAD RESULTS (COMPLETE)
-                # ==============================================================
+                # --------------------------------------------------------------
+                # DOWNLOAD RESULTS
+                # --------------------------------------------------------------
                 st.markdown("---")
                 st.markdown("## 📥 DOWNLOAD RESULTS")
                 
