@@ -82,7 +82,20 @@ def interpret_d(d):
     else:
         return "Very Good"
 
-def interpret_ddi(ddi):
+# [F13] FIX: interpret_ddi now accepts upper_select to detect unverifiable DDI.
+# When upper_select = 0, DDI = Prop_Lower - 0 = Prop_Lower, which is NOT a
+# valid contrast between groups — it just reflects lower-group behaviour.
+# Labelling this as "Functional" is methodologically misleading.
+# We distinguish: upper group truly had zero selections (unverifiable)
+# vs upper group had selections but DDI happened to be <= 0.
+def interpret_ddi(ddi, upper_select):
+    if upper_select == 0:
+        # Upper group chose this option zero times.
+        # DDI = Prop_Lower - 0 cannot be interpreted as a real group contrast.
+        if ddi == 0:
+            return "Neutral (Upper_N=0)"
+        else:
+            return "Unverifiable (Upper_N=0)"
     if ddi > 0:
         return "Functional"
     elif ddi == 0:
@@ -391,10 +404,17 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     prop_lower = lower_select / n_group if n_group > 0 else 0
 
                     ddi = prop_lower - prop_upper
-                    ddi_int = interpret_ddi(ddi)
+                    # [F13] pass upper_select so interpret_ddi can flag Upper_N=0
+                    ddi_int = interpret_ddi(ddi, upper_select)
 
                     meets_percent = percent >= 5.0
-                    meets_lower_upper = lower_select > upper_select
+                    # [F13] Lower > Upper is only meaningful when upper_select > 0
+                    if upper_select == 0 and lower_select == 0:
+                        meets_lower_upper_str = "N/A"
+                    elif upper_select == 0:
+                        meets_lower_upper_str = "Unverifiable"
+                    else:
+                        meets_lower_upper_str = "Yes" if lower_select > upper_select else "No"
 
                     distractor_results.append([
                         item, key_value, option,
@@ -403,7 +423,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                         round(prop_upper, 4), round(prop_lower, 4),
                         round(ddi, 4), ddi_int,
                         "Yes" if meets_percent else "No",
-                        "Yes" if meets_lower_upper else "No"
+                        meets_lower_upper_str
                     ])
 
             df_results = pd.DataFrame(results, columns=[
@@ -550,6 +570,25 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                                "(1) Selected by >=5% of students, "
                                "(2) More low-ability than high-ability students choose them")
 
+                    # [F13] Warn when upper group chose zero distractors across most items.
+                    _total_distractor_rows = len(distractor_results)
+                    _unverifiable_rows = sum(
+                        1 for row in distractor_results
+                        if row[5] == 0 and row[6] > 0  # upper_N=0, lower_N>0
+                    )
+                    if _total_distractor_rows > 0:
+                        _unverifiable_pct = _unverifiable_rows / _total_distractor_rows * 100
+                        if _unverifiable_pct >= 50:
+                            st.warning(
+                                f"⚠️ **Upper_N = 0 detected in {_unverifiable_pct:.0f}% of distractor rows.** "
+                                f"The upper group ({group_percent}% top scorers) answered these items correctly "
+                                f"and did not select any distractors. DDI for these rows is labelled "
+                                f"**'Unverifiable (Upper_N=0)'** because no upper-group contrast is available — "
+                                f"DDI simply equals Prop_Lower, not a true inter-group difference. "
+                                f"This typically indicates very high item discrimination (D), "
+                                f"which is confirmed in the Item Statistics table."
+                            )
+
                     df_distractor = pd.DataFrame(distractor_results, columns=[
                         'Item', 'Key', 'Option',
                         'N_Select', 'Percent',
@@ -564,14 +603,22 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     st.markdown("### 📊 DDI Summary by Item")
                     ddi_summary = []
                     for item in item_columns:
-                        item_distractors = df_distractor[df_distractor['Item'] == item]['DDI'].values
+                        item_distractors = df_distractor[df_distractor['Item'] == item]
                         if len(item_distractors) > 0:
-                            mean_ddi = np.mean(item_distractors)
-                            functional_count = sum(1 for d in item_distractors if d > 0)
-                            ddi_summary.append([item, len(item_distractors), round(mean_ddi, 4), functional_count])
+                            mean_ddi = np.mean(item_distractors['DDI'].values)
+                            # [F13] Only count truly Functional (upper_N > 0 and DDI > 0)
+                            functional_count = (item_distractors['DDI_Interpretation'] == 'Functional').sum()
+                            unverifiable_count = item_distractors['DDI_Interpretation'].str.startswith('Unverifiable').sum()
+                            ddi_summary.append([
+                                item,
+                                len(item_distractors),
+                                round(mean_ddi, 4),
+                                int(functional_count),
+                                int(unverifiable_count)
+                            ])
 
                     df_ddi_summary = pd.DataFrame(ddi_summary, columns=[
-                        'Item', 'Num_Distractors', 'Mean_DDI', 'Functional_Count'
+                        'Item', 'Num_Distractors', 'Mean_DDI', 'Functional_Count', 'Unverifiable_Count'
                     ])
                     st.dataframe(df_ddi_summary, use_container_width=True)
 
@@ -927,14 +974,21 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                              'Range': f'≥ {valid_threshold}',
                              'Action': 'Retain'},
                             {'Aspect': 'DDI', 'Category': 'Functional',
-                             'Range': '> 0',
+                             'Range': '> 0 (and Upper_N > 0)',
                              'Action': 'Retain distractor'},
                             {'Aspect': 'DDI', 'Category': 'Neutral',
-                             'Range': '= 0',
+                             'Range': '= 0 (and Upper_N > 0)',
                              'Action': 'Evaluate, consider revision'},
                             {'Aspect': 'DDI', 'Category': 'Non-Functional',
-                             'Range': '< 0',
+                             'Range': '< 0 (and Upper_N > 0)',
                              'Action': 'Replace distractor'},
+                            {'Aspect': 'DDI', 'Category': 'Unverifiable (Upper_N=0)',
+                             'Range': 'Upper_N = 0, Lower_N > 0',
+                             'Action': 'DDI = Prop_Lower only; no upper-group contrast. '
+                                       'Evaluate based on Percent (>=5%) criterion alone.'},
+                            {'Aspect': 'DDI', 'Category': 'Neutral (Upper_N=0)',
+                             'Range': 'Upper_N = 0, Lower_N = 0',
+                             'Action': 'Distractor not chosen by either group; consider replacing.'},
                         ]).to_excel(writer, sheet_name='Threshold_Parameters', index=False)
 
                     output.seek(0)
