@@ -1,5 +1,7 @@
 # ======================================================================
-# ITEM ANALYSIS - STREAMLIT VERSION (COMPLETE + OPTIMIZED)
+# ITEM ANALYSIS - STREAMLIT VERSION (COMPLETE + BUG FIXED)
+# ======================================================================
+# CRITICAL FIX: Upper_N = 0 issue resolved by preserving original indices
 # ======================================================================
 
 import streamlit as st
@@ -188,11 +190,34 @@ if st.session_state.file_loaded and st.session_state.df is not None:
             
             df['total_score'] = df_scores.sum(axis=1)
             
-            # Upper and lower groups (Kelley's 27% method)
+            # ==================================================================
+            # CRITICAL BUG FIX: Preserve original indices for correct group formation
+            # ==================================================================
+            # Step 1: Add original index as a column
+            df_with_idx = df.reset_index().rename(columns={'index': 'original_idx'})
+            
+            # Step 2: Sort by total_score
+            df_sorted = df_with_idx.sort_values('total_score', ascending=False).reset_index(drop=True)
+            
+            # Step 3: Determine group size
             n_group = max(1, int(np.ceil(n_students * group_percent / 100)))
-            df_sorted = df.sort_values('total_score', ascending=False).reset_index(drop=True)
-            upper_group = df_sorted.iloc[:n_group].copy()
-            lower_group = df_sorted.iloc[-n_group:].copy()
+            
+            # Step 4: Get original indices of upper and lower groups
+            upper_indices = df_sorted.head(n_group)['original_idx'].tolist()
+            lower_indices = df_sorted.tail(n_group)['original_idx'].tolist()
+            
+            # Step 5: Extract groups from original DataFrame using .loc[]
+            upper_group = df.loc[upper_indices].copy()
+            lower_group = df.loc[lower_indices].copy()
+            
+            # Also create score-based groups for validation
+            upper_scores = df_scores.loc[upper_indices].copy()
+            lower_scores = df_scores.loc[lower_indices].copy()
+            
+            # Debug info (can be removed later)
+            st.caption(f"**Info:** Upper group size: {len(upper_group)} students (top {group_percent}%)")
+            st.caption(f"**Info:** Upper group total scores: {upper_group['total_score'].tolist()}")
+            st.caption(f"**Info:** Lower group total scores: {lower_group['total_score'].tolist()}")
             
             # ==================================================================
             # ITEM STATISTICS
@@ -220,11 +245,12 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                 
                 key_value = answer_key[i]
                 
+                # Calculate using correctly formed groups
                 upper_correct = (upper_group[item].astype(str).str.strip().str.upper() == key_value).sum()
-                p_upper = upper_correct / n_group
+                p_upper = upper_correct / n_group if n_group > 0 else 0
                 
                 lower_correct = (lower_group[item].astype(str).str.strip().str.upper() == key_value).sum()
-                p_lower = lower_correct / n_group
+                p_lower = lower_correct / n_group if n_group > 0 else 0
                 
                 p_upper_values.append(p_upper)
                 p_lower_values.append(p_lower)
@@ -312,6 +338,7 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                     total_select = (item_data == option).sum()
                     percent = (total_select / n_students) * 100 if n_students > 0 else 0
                     
+                    # Use correctly formed groups
                     upper_select = (upper_group[item].astype(str).str.strip().str.upper() == option).sum()
                     lower_select = (lower_group[item].astype(str).str.strip().str.upper() == option).sum()
                     
@@ -428,7 +455,6 @@ if st.session_state.file_loaded and st.session_state.df is not None:
                 st.caption("This table shows all psychometric properties for each test item.")
                 st.caption("**Color coding:** p (Green=Moderate, Red=Difficult, Orange=Easy) | D (Green=Very Good, Orange=Fair, Red=Poor) | r_it (Green=Valid, Red=Invalid)")
                 
-                # FIXED: Use apply instead of applymap
                 def color_p(val):
                     if val < difficult_threshold:
                         return 'background-color: #ffcccc'
