@@ -75,21 +75,26 @@ if student_file and key_file:
     df_sorted = df.sort_values('Total_Score', ascending=False)
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
 
-    # 4. RIGOROUS CALCULATION
+    # 4. RIGOROUS CALCULATION (CORRECTED METRICS)
     results = []
     for i, item in enumerate(item_cols):
         p = df_scores[item].mean()
         q = 1 - p
         p_up, p_lo = df_scores.loc[up_idx, item].mean(), df_scores.loc[lo_idx, item].mean()
         d_val = p_up - p_lo 
-        r_pb, _ = pointbiserialr(df_scores[item], total_scores) if df_scores[item].var() != 0 else (0,0)
+        
+        # --- PERBAIKAN STATISTIK DISINI ---
+        # Menghitung skor total tanpa mengikutsertakan item yang sedang diuji (Item-Rest)
+        corrected_total = total_scores - df_scores[item]
+        
+        # Korelasi biserial antara skor item dengan skor total yang sudah dikoreksi
+        r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
+        # ----------------------------------
 
-        # Descriptive Logic
         p_desc = "Easy" if p > 0.7 else "Difficult" if p < 0.3 else "Moderate"
         d_desc = "Excellent" if d_val >= 0.4 else "Good" if d_val >= 0.3 else "Fair" if d_val >= 0.2 else "Poor"
         r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
-        # Decision Logic
         if r_pb >= validity_limit and d_val >= 0.3:
             decision = "RETAIN"
         elif r_pb >= 0.2 and d_val >= 0.2:
@@ -98,17 +103,10 @@ if student_file and key_file:
             decision = "REJECT"
 
         results.append({
-            "Item": item, 
-            "p": p, "p_Eval": p_desc, 
-            "q": q, "pq": p*q,
-            "ddi": d_val, 
-            "d": p, 
-            "d_Eval": d_desc, 
-            "r_pbis": r_pb, "r_Eval": r_desc, 
-            "DECISION": decision
+            "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": p*q,
+            "ddi": d_val, "d": p, "d_Eval": d_desc, 
+            "r_pbis": r_pb, "r_Eval": r_desc, "DECISION": decision
         })
-
-    df_res = pd.DataFrame(results)
 
     # 5. TEST-LEVEL STATISTICS
     mean_score = total_scores.mean()
