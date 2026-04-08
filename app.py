@@ -96,18 +96,18 @@ if student_file and key_file:
         p = df_scores[item].mean()
         q = 1 - p
         p_up, p_lo = df_scores.loc[up_idx, item].mean(), df_scores.loc[lo_idx, item].mean()
-        d = p_up - p_lo
+        d_val = p_up - p_lo
         r_pb, _ = pointbiserialr(df_scores[item], total_scores) if df_scores[item].var() != 0 else (0,0)
 
         # Descriptive Logic
         p_desc = "Easy" if p > 0.7 else "Difficult" if p < 0.3 else "Moderate"
-        d_desc = "Excellent" if d >= 0.4 else "Good" if d >= 0.3 else "Fair" if d >= 0.2 else "Poor"
+        d_desc = "Excellent" if d_val >= 0.4 else "Good" if d_val >= 0.3 else "Fair" if d_val >= 0.2 else "Poor"
         r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
         # Decision Logic
-        if r_pb >= validity_limit and d >= 0.3:
+        if r_pb >= validity_limit and d_val >= 0.3:
             decision = "RETAIN"
-        elif r_pb >= 0.2 and d >= 0.2:
+        elif r_pb >= 0.2 and d_val >= 0.2:
             decision = "REVISE"
         else:
             decision = "REJECT"
@@ -116,7 +116,7 @@ if student_file and key_file:
             "Item": item, 
             "p": p, "p_Eval": p_desc, 
             "q": q, "pq": p*q,
-            "ddi": d, "d_Eval": d_desc, 
+            "ddi": d_val, "d": d_val, "d_Eval": d_desc, 
             "r_pbis": r_pb, "r_Eval": r_desc, 
             "DECISION": decision
         })
@@ -147,20 +147,26 @@ if student_file and key_file:
         if row['p'] < 0.3: styles[1] = 'background-color: #ffcccc'
         elif row['p'] > 0.7: styles[1] = 'background-color: #ccffcc'
         else: styles[1] = 'background-color: #fff2cc'
-        # ddi Styling
-        if row['ddi'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
-        elif row['ddi'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
-        else: styles[5] = 'background-color: #f1c40f'
+        # ddi/d Styling (index 5 and 6)
+        if row['ddi'] >= 0.4: 
+            styles[5] = 'background-color: #2ecc71; color: white'
+            styles[6] = 'background-color: #2ecc71; color: white'
+        elif row['ddi'] < 0.2: 
+            styles[5] = 'background-color: #e74c3c; color: white'
+            styles[6] = 'background-color: #e74c3c; color: white'
+        else: 
+            styles[5] = 'background-color: #f1c40f'
+            styles[6] = 'background-color: #f1c40f'
         # r_pbis & r_Eval Styling
         if row['r_pbis'] < validity_limit:
-            styles[7] = 'color: #e74c3c; font-weight: bold'
-            styles[8] = 'background-color: #ffcccc'
+            styles[8] = 'color: #e74c3c; font-weight: bold'
+            styles[9] = 'background-color: #ffcccc'
         else:
-            styles[8] = 'background-color: #ccffcc'
+            styles[9] = 'background-color: #ccffcc'
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
-    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["p", "q", "pq", "ddi", "r_pbis"]), use_container_width=True)
+    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["p", "q", "pq", "ddi", "d", "r_pbis"]), use_container_width=True)
 
     # 7. AUTOMATIC REPORT
     st.divider()
