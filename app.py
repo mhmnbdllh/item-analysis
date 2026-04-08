@@ -146,22 +146,15 @@ if student_file and key_file:
         if row['p'] < 0.3: styles[1] = 'background-color: #ffcccc'
         elif row['p'] > 0.7: styles[1] = 'background-color: #ccffcc'
         else: styles[1] = 'background-color: #fff2cc'
-        
-        if row['ddi'] >= 0.4: 
-            styles[5] = 'background-color: #2ecc71; color: white'
-        elif row['ddi'] < 0.2: 
-            styles[5] = 'background-color: #e74c3c; color: white'
-        else: 
-            styles[5] = 'background-color: #f1c40f'
-            
+        if row['ddi'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
+        elif row['ddi'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
+        else: styles[5] = 'background-color: #f1c40f'
         if row['d'] < 0.3: styles[6] = 'background-color: #ffcccc'
         elif row['d'] > 0.7: styles[6] = 'background-color: #ccffcc'
-        
         if row['r_pbis'] < validity_limit:
             styles[8] = 'color: #e74c3c; font-weight: bold'
             styles[9] = 'background-color: #ffcccc'
-        else:
-            styles[9] = 'background-color: #ccffcc'
+        else: styles[9] = 'background-color: #ccffcc'
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
@@ -177,9 +170,9 @@ if student_file and key_file:
         else: st.error(f"Low Reliability ({kr20:.3f}). Caution: Scores may be unstable.")
     with c2:
         st.write("**Standard Error of Measurement (SEM):**")
-        st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
+        st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation.")
 
-    # 8. DISTRACTOR ANALYSIS (HANYA FORMAT TAMPILAN YANG BERUBAH)
+    # 8. DISTRACTOR ANALYSIS (HANYA BAGIAN INI YANG DIMODIFIKASI)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     
     dist_freq = df[item_cols].apply(lambda x: x.astype(str).str.upper().str.strip().value_counts()).fillna(0)
@@ -187,19 +180,35 @@ if student_file and key_file:
     
     cols = sorted([c for c in dist_pct.index if len(str(c)) == 1]) + sorted([c for c in dist_pct.index if len(str(c)) > 1])
     
-    df_dist_styled = pd.DataFrame(index=item_cols)
+    # PERBAIKAN: Gunakan format() pada styler, BUKAN mengubah data mentah menjadi string agar tidak crash
+    df_dist_raw = dist_freq.T[cols]
+    
+    # Membuat mapping teks XX.XXX (XX.XX%) secara terpisah untuk ditampilkan
+    def format_distractor(val, col_name, item_name):
+        f = dist_freq.loc[col_name, item_name]
+        p = dist_pct.loc[col_name, item_name]
+        return f"{f:.3f} ({p:.2%})"
+
+    # Buat DataFrame bayangan untuk label tampilan
+    df_display_labels = pd.DataFrame(index=item_cols)
     for col in cols:
-        # Menggabungkan Angka (Persentase)
-        df_dist_styled[col] = [f"{f:.3f} ({p:.2%})" for f, p in zip(dist_freq.loc[col], dist_pct.loc[col])]
-    
-    def interpret_distractor(row_idx):
-        effective = [opt for opt in cols if dist_pct.loc[opt, row_idx] >= 0.05 and opt != "N/A"]
+        df_display_labels[col] = [f"{dist_freq.loc[col, item]:.3f} ({dist_pct.loc[col, item]:.2%})" for item in item_cols]
+
+    def interpret_distractor(row_name):
+        effective = [opt for opt in cols if dist_pct.loc[opt, row_name] >= 0.05 and opt != "N/A"]
         return f"Effective Options: {', '.join(effective)}" if effective else "No effective distractors"
-    
-    df_dist_styled['Interpretation'] = [interpret_distractor(item) for item in item_cols]
-    
-    # Menampilkan tabel dengan gradasi warna asli
-    st.dataframe(df_dist_styled.style.background_gradient(cmap='YlGn', subset=cols), use_container_width=True)
+
+    df_display_labels['Interpretation'] = [interpret_distractor(item) for item in item_cols]
+
+    # TAMPILAN WEBSITE: Gunakan gmap untuk pewarnaan gradasi berdasarkan angka asli (dist_pct)
+    st.dataframe(
+        df_display_labels.style.background_gradient(
+            cmap='YlGn', 
+            subset=cols, 
+            gmap=dist_pct.T[cols]
+        ), 
+        use_container_width=True
+    )
 
     # 9. PANDUAN MEMBACA DATA (GUIDE)
     guide_data = {
@@ -209,11 +218,11 @@ if student_file and key_file:
     }
     st.table(pd.DataFrame(guide_data))
 
-    # EXPORT
+    # EXPORT (MENGGUNAKAN FORMAT YANG SAMA)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
-        df_dist_styled.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
+        df_display_labels.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         
     st.download_button(
         label="📥 Download Full Report",
