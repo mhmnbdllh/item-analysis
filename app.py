@@ -22,40 +22,40 @@ st.markdown("""
 st.title("🛡️ RIGOROUS ITEM ANALYSIS TOOL (CTT)")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
-# SIDEBAR: THE COMPREHENSIVE LEGEND (FIXED & ENHANCED)
+# SIDEBAR: THE COMPREHENSIVE LEGEND
 with st.sidebar:
     st.header("📊 Methodological Legend")
     
-    with st.expander("1. Difficulty Index (P)", expanded=True):
+    with st.expander("1. Difficulty Index (p)", expanded=True):
         st.write("""
-        Menunjukkan tingkat kesukaran butir soal.
-        - **Easy (P > 0.70):** 🟢
-        - **Moderate (0.30 - 0.70):** 🟡 (Ideal/Diterima)
-        - **Difficult (P < 0.30):** 🔴
+        Shows the difficulty level of the test item.
+        - **Easy (p > 0.70):** 🟢
+        - **Moderate (0.30 - 0.70):** 🟡 (Ideal/Accepted)
+        - **Difficult (p < 0.30):** 🔴
         """)
 
-    with st.expander("2. Discrimination (D)", expanded=True):
+    with st.expander("2. Discrimination (d)", expanded=True):
         st.write("""
-        Daya beda antara siswa berkemampuan tinggi dan rendah.
-        - **Excellent (D ≥ 0.40):** 🟢
+        The ability to distinguish between high and low-performing students.
+        - **Excellent (d ≥ 0.40):** 🟢
         - **Good (0.30 - 0.39):** 🔵
-        - **Marginal (0.20 - 0.29):** 🟡 (Perlu Revisi)
-        - **Poor (D < 0.20):** 🔴 (Tolak/Hapus)
+        - **Fair (0.20 - 0.29):** 🟡 (Revision Required)
+        - **Poor (d < 0.20):** 🔴 (Reject/Discard)
         """)
 
     with st.expander("3. Validity (r_pbis)", expanded=True):
         st.write("""
-        Korelasi poin-biserial antara skor butir dan total.
+        Point-biserial correlation between item score and total score.
         - **Valid:** ≥ Threshold 🟢
         - **Invalid:** < Threshold 🔴
-        - *Nilai negatif menunjukkan soal bermasalah.*
+        - *Negative values indicate problematic items.*
         """)
 
-    with st.expander("4. DDI, PQ & SEM"):
+    with st.expander("4. ddi, pq & SEM"):
         st.write("""
-        - **DDI:** Indeks Kesukaran Diskriminatif.
-        - **PQ:** Varians butir ($P \\times Q$).
-        - **SEM:** Standar error pengukuran.
+        - **ddi:** Discrimination Difficulty Index.
+        - **pq:** Item Variance ($p \\times q$).
+        - **SEM:** Standard Error of Measurement.
         """)
 
     st.header("⚙️ Settings")
@@ -90,7 +90,7 @@ if student_file and key_file:
     df_sorted = df.sort_values('Total_Score', ascending=False)
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
 
-    # 4. RIGOROUS CALCULATION (WITH DESCRIPTIVE INTERPRETATION)
+    # 4. RIGOROUS CALCULATION
     results = []
     for i, item in enumerate(item_cols):
         p = df_scores[item].mean()
@@ -114,20 +114,20 @@ if student_file and key_file:
 
         results.append({
             "Item": item, 
-            "P": p, "P_Eval": p_desc, 
-            "Q": q, "PQ": p*q,
-            "D": d, "D_Eval": d_desc, 
+            "p": p, "p_Eval": p_desc, 
+            "q": q, "pq": p*q,
+            "d": d, "d_Eval": d_desc, 
             "r_pbis": r_pb, "r_Eval": r_desc, 
             "DECISION": decision
         })
 
     df_res = pd.DataFrame(results)
 
-    # 5. TEST-LEVEL STATISTICS (KR-20, SEM, MEAN, SD)
+    # 5. TEST-LEVEL STATISTICS
     mean_score = total_scores.mean()
     std_score = total_scores.std(ddof=1)
     var_total = total_scores.var(ddof=1)
-    kr20 = (n_items/(n_items-1)) * (1 - (df_res["PQ"].sum()/var_total)) if var_total > 0 else 0
+    kr20 = (n_items/(n_items-1)) * (1 - (df_res["pq"].sum()/var_total)) if var_total > 0 else 0
     sem = std_score * np.sqrt(1 - kr20)
 
     # METRIC DASHBOARD
@@ -143,13 +143,13 @@ if student_file and key_file:
     # 6. STYLING (TRAFFIC LIGHT)
     def apply_academic_style(row):
         styles = [''] * len(row)
-        # P Styling
-        if row['P'] < 0.3: styles[1] = 'background-color: #ffcccc'
-        elif row['P'] > 0.7: styles[1] = 'background-color: #ccffcc'
+        # p Styling
+        if row['p'] < 0.3: styles[1] = 'background-color: #ffcccc'
+        elif row['p'] > 0.7: styles[1] = 'background-color: #ccffcc'
         else: styles[1] = 'background-color: #fff2cc'
-        # D Styling
-        if row['D'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
-        elif row['D'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
+        # d Styling
+        if row['d'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
+        elif row['d'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
         else: styles[5] = 'background-color: #f1c40f'
         # r_pbis & r_Eval Styling
         if row['r_pbis'] < validity_limit:
@@ -160,7 +160,7 @@ if student_file and key_file:
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
-    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["P", "Q", "PQ", "D", "r_pbis"]), use_container_width=True)
+    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["p", "q", "pq", "d", "r_pbis"]), use_container_width=True)
 
     # 7. AUTOMATIC REPORT
     st.divider()
@@ -171,8 +171,8 @@ if student_file and key_file:
         if kr20 >= 0.7: st.success(f"High Reliability ({kr20:.3f}). Instrument is consistent.")
         else: st.error(f"Low Reliability ({kr20:.3f}). Caution: Scores may be unstable.")
     with c2:
-        st.write("**Standard Error (SEM):**")
-        st.info(f"SEM is {sem:.3f}. Angka ini menunjukkan rentang fluktuasi skor murni siswa.")
+        st.write("**Standard Error of Measurement (SEM):**")
+        st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
     # 8. DISTRACTOR ANALYSIS
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
