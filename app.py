@@ -5,7 +5,7 @@ from scipy.stats import pointbiserialr
 import io
 
 # ======================================================================
-# ACADEMIC ITEM ANALYSIS - STATISTICALLY RIGOROUS VERSION (2026)
+# ACADEMIC ITEM ANALYSIS - RIGOROUS ENGLISH VERSION (2026)
 # ======================================================================
 
 st.set_page_config(page_title="Item Analysis Pro", page_icon="📈", layout="wide")
@@ -34,7 +34,7 @@ with st.sidebar:
         - **Difficult (p < 0.30):** 🔴
         """)
 
-    with st.expander("2. Discrimination (d)", expanded=True):
+    with st.expander("2. Discrimination (ddi/d)", expanded=True):
         st.write("""
         The ability to distinguish between high and low-performing students.
         - **Excellent (d ≥ 0.40):** 🟢
@@ -116,7 +116,7 @@ if student_file and key_file:
             "Item": item, 
             "p": p, "p_Eval": p_desc, 
             "q": q, "pq": p*q,
-            "d": d, "d_Eval": d_desc, 
+            "ddi": d, "d_Eval": d_desc, 
             "r_pbis": r_pb, "r_Eval": r_desc, 
             "DECISION": decision
         })
@@ -147,9 +147,9 @@ if student_file and key_file:
         if row['p'] < 0.3: styles[1] = 'background-color: #ffcccc'
         elif row['p'] > 0.7: styles[1] = 'background-color: #ccffcc'
         else: styles[1] = 'background-color: #fff2cc'
-        # d Styling
-        if row['d'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
-        elif row['d'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
+        # ddi Styling
+        if row['ddi'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
+        elif row['ddi'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
         else: styles[5] = 'background-color: #f1c40f'
         # r_pbis & r_Eval Styling
         if row['r_pbis'] < validity_limit:
@@ -160,7 +160,7 @@ if student_file and key_file:
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
-    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["p", "q", "pq", "d", "r_pbis"]), use_container_width=True)
+    st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["p", "q", "pq", "ddi", "r_pbis"]), use_container_width=True)
 
     # 7. AUTOMATIC REPORT
     st.divider()
