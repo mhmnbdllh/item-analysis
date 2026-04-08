@@ -22,7 +22,7 @@ st.markdown("""
 st.title("🛡️ RIGOROUS ITEM ANALYSIS TOOL (CTT)")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
-# SIDEBAR: THE COMPREHENSIVE LEGEND
+# SIDEBAR: THE COMPREHENSIVE LEGEND (RESTORED TO ORIGINAL)
 with st.sidebar:
     st.header("📊 Methodological Legend")
     
@@ -161,7 +161,7 @@ if student_file and key_file:
         st.write("**Standard Error of Measurement (SEM):**")
         st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS (THE PRECISE FIX)
+    # 8. DISTRACTOR ANALYSIS (COLOR RESTORED & LEGEND PROTECTED)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
@@ -171,11 +171,12 @@ if student_file and key_file:
         effective = [opt for opt, val in row.items() if val >= 0.05 and opt != "N/A"]
         return f"Effective Options: {', '.join(effective)}" if effective else "No effective distractors"
     
-    # Pewarnaan dilakukan pada data angka MURNI menggunakan .format() bawaan Styler
-    # Ini menjamin warna ADA dan teks GABUNGAN (Angka + Persen) muncul tanpa ValueError
+    # Menghitung interpretasi sebelum format diubah menjadi string
     df_dist_styled = df_dist[cols].copy()
     df_dist_styled['Interpretation'] = df_dist[cols].apply(interpret_distractor, axis=1)
 
+    # Teknik Styler: Menggunakan format lambda untuk mengubah tampilan tanpa mengubah tipe data asli
+    # Ini menjamin background_gradient bisa membaca angka aslinya
     st.dataframe(
         df_dist_styled.style
         .background_gradient(cmap='YlGn', subset=cols)
@@ -187,7 +188,13 @@ if student_file and key_file:
     guide_data = {
         "Metric": ["Difficulty (d)", "Discrimination (ddi)", "r_pbis", "KR-20", "SEM"],
         "Ideal Range": ["0.30 - 0.70", "≥ 0.30", "≥ Threshold", "≥ 0.70", "Lower is Better"],
-        "Description": ["Moderate level (d) is best.", "ddi distinguishes achievers.", "Correlation item-total.", "Internal consistency.", "Precision of scores."]
+        "Description": [
+            "Moderate level (d) is best for norm-referenced tests.",
+            "Discrimination (ddi) distinguishes between high and low achievers.",
+            "Correlation between item and total test score.",
+            "Internal consistency of the entire test.",
+            "Precision of the scores obtained."
+        ]
     }
     df_guide = pd.DataFrame(guide_data)
 
@@ -195,10 +202,19 @@ if student_file and key_file:
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
-        df_dist_styled.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
+        # Untuk Excel, kita harus simpan versi teks agar format gabungannya terbawa
+        df_dist_export = df_dist[cols].applymap(lambda x: f"{x:.4f} ({x:.2%})")
+        df_dist_export['Interpretation'] = df_dist_styled['Interpretation']
+        df_dist_export.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         df_guide.to_excel(writer, index=False, sheet_name='Reading_Guide')
+        
         workbook = writer.book
         for sheet in writer.sheets.values():
             sheet.set_column('A:Z', 22)
             
-    st.download_button(label="📥 Download Full Report", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    st.download_button(
+        label="📥 Download Full Report",
+        data=buf.getvalue(),
+        file_name="Complete_Item_Analysis_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
