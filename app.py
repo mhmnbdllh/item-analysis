@@ -170,60 +170,55 @@ if student_file and key_file:
         else: st.error(f"Low Reliability ({kr20:.3f}). Caution: Scores may be unstable.")
     with c2:
         st.write("**Standard Error of Measurement (SEM):**")
-        st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation.")
+        st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS (HANYA BAGIAN INI YANG DIMODIFIKASI)
+    # 8. DISTRACTOR ANALYSIS (MODIFIKASI FORMAT OUTPUT)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     
-    dist_freq = df[item_cols].apply(lambda x: x.astype(str).str.upper().str.strip().value_counts()).fillna(0)
-    dist_pct = df[item_cols].apply(lambda x: x.astype(str).str.upper().str.strip().value_counts(normalize=True)).fillna(0)
+    # Hitung data mentah
+    dist_pct_raw = df[item_cols].apply(lambda x: x.astype(str).str.upper().str.strip().value_counts(normalize=True)).fillna(0)
+    cols = sorted([c for c in dist_pct_raw.index if len(str(c)) == 1]) + sorted([c for c in dist_pct_raw.index if len(str(c)) > 1])
     
-    cols = sorted([c for c in dist_pct.index if len(str(c)) == 1]) + sorted([c for c in dist_pct.index if len(str(c)) > 1])
-    
-    # PERBAIKAN: Gunakan format() pada styler, BUKAN mengubah data mentah menjadi string agar tidak crash
-    df_dist_raw = dist_freq.T[cols]
-    
-    # Membuat mapping teks XX.XXX (XX.XX%) secara terpisah untuk ditampilkan
-    def format_distractor(val, col_name, item_name):
-        f = dist_freq.loc[col_name, item_name]
-        p = dist_pct.loc[col_name, item_name]
-        return f"{f:.3f} ({p:.2%})"
-
-    # Buat DataFrame bayangan untuk label tampilan
-    df_display_labels = pd.DataFrame(index=item_cols)
+    # Buat DataFrame untuk tampilan yang menggabungkan Angka (Persentase)
+    df_dist_styled = pd.DataFrame(index=item_cols)
     for col in cols:
-        df_display_labels[col] = [f"{dist_freq.loc[col, item]:.3f} ({dist_pct.loc[col, item]:.2%})" for item in item_cols]
-
+        df_dist_styled[col] = dist_pct_raw.T[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
+    
     def interpret_distractor(row_name):
-        effective = [opt for opt in cols if dist_pct.loc[opt, row_name] >= 0.05 and opt != "N/A"]
+        row_data = dist_pct_raw.T.loc[row_name]
+        effective = [opt for opt in cols if row_data[opt] >= 0.05 and opt != "N/A"]
         return f"Effective Options: {', '.join(effective)}" if effective else "No effective distractors"
-
-    df_display_labels['Interpretation'] = [interpret_distractor(item) for item in item_cols]
-
-    # TAMPILAN WEBSITE: Gunakan gmap untuk pewarnaan gradasi berdasarkan angka asli (dist_pct)
-    st.dataframe(
-        df_display_labels.style.background_gradient(
-            cmap='YlGn', 
-            subset=cols, 
-            gmap=dist_pct.T[cols]
-        ), 
-        use_container_width=True
-    )
+    
+    df_dist_styled['Interpretation'] = [interpret_distractor(item) for item in item_cols]
+    
+    # Tampilkan di Web dengan gradasi warna menggunakan gmap (agar tidak error)
+    st.dataframe(df_dist_styled.style.background_gradient(cmap='YlGn', subset=cols, gmap=dist_pct_raw.T[cols]), use_container_width=True)
 
     # 9. PANDUAN MEMBACA DATA (GUIDE)
     guide_data = {
         "Metric": ["Difficulty (d)", "Discrimination (ddi)", "r_pbis", "KR-20", "SEM"],
         "Ideal Range": ["0.30 - 0.70", "≥ 0.30", "≥ Threshold", "≥ 0.70", "Lower is Better"],
-        "Description": ["Moderate level is best.", "Distinguishes high/low achievers.", "Item-total correlation.", "Internal consistency.", "Score precision."]
+        "Description": [
+            "Moderate level (d) is best for norm-referenced tests.",
+            "Discrimination (ddi) distinguishes between high and low achievers.",
+            "Correlation between item and total test score.",
+            "Internal consistency of the entire test.",
+            "Precision of the scores obtained."
+        ]
     }
-    st.table(pd.DataFrame(guide_data))
+    df_guide = pd.DataFrame(guide_data)
 
-    # EXPORT (MENGGUNAKAN FORMAT YANG SAMA)
+    # EXPORT (MENGGUNAKAN FORMAT OUTPUT YANG SAMA)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
-        df_display_labels.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
+        df_dist_styled.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
+        df_guide.to_excel(writer, index=False, sheet_name='Reading_Guide')
         
+        workbook = writer.book
+        for sheet in writer.sheets.values():
+            sheet.set_column('A:Z', 18)
+            
     st.download_button(
         label="📥 Download Full Report",
         data=buf.getvalue(),
