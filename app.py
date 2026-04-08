@@ -22,37 +22,40 @@ st.markdown("""
 st.title("🛡️ RIGOROUS ITEM ANALYSIS TOOL (CTT)")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
-# SIDEBAR: THE COMPREHENSIVE LEGEND
+# SIDEBAR: THE COMPREHENSIVE LEGEND (FIXED & ENHANCED)
 with st.sidebar:
     st.header("📊 Methodological Legend")
     
     with st.expander("1. Difficulty Index (P)", expanded=True):
         st.write("""
+        Menunjukkan tingkat kesukaran butir soal.
         - **Easy (P > 0.70):** 🟢
-        - **Moderate (0.30 - 0.70):** 🟡 (Ideal)
+        - **Moderate (0.30 - 0.70):** 🟡 (Ideal/Diterima)
         - **Difficult (P < 0.30):** 🔴
         """)
 
-    with st.expander("2. Discrimination (D)"):
+    with st.expander("2. Discrimination (D)", expanded=True):
         st.write("""
+        Daya beda antara siswa berkemampuan tinggi dan rendah.
         - **Excellent (D ≥ 0.40):** 🟢
         - **Good (0.30 - 0.39):** 🔵
-        - **Marginal (0.20 - 0.29):** 🟡
-        - **Poor (D < 0.20):** 🔴 (Reject)
+        - **Marginal (0.20 - 0.29):** 🟡 (Perlu Revisi)
+        - **Poor (D < 0.20):** 🔴 (Tolak/Hapus)
         """)
 
-    with st.expander("3. Point Biserial (r_pbis)"):
+    with st.expander("3. Validity (r_pbis)", expanded=True):
         st.write("""
-        Measures item-total correlation. 
+        Korelasi poin-biserial antara skor butir dan total.
         - **Valid:** ≥ Threshold 🟢
         - **Invalid:** < Threshold 🔴
-        - *Negative values indicate a flawed item.*
+        - *Nilai negatif menunjukkan soal bermasalah.*
         """)
 
-    with st.expander("4. DDI & PQ"):
+    with st.expander("4. DDI, PQ & SEM"):
         st.write("""
-        - **DDI:** Discrimination Difficulty Index.
-        - **PQ:** Item Variance ($P \\times Q$). Max variance at $P=0.5$.
+        - **DDI:** Indeks Kesukaran Diskriminatif.
+        - **PQ:** Varians butir ($P \\times Q$).
+        - **SEM:** Standar error pengukuran.
         """)
 
     st.header("⚙️ Settings")
@@ -87,7 +90,7 @@ if student_file and key_file:
     df_sorted = df.sort_values('Total_Score', ascending=False)
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
 
-    # 4. RIGOROUS CALCULATION
+    # 4. RIGOROUS CALCULATION (WITH DESCRIPTIVE INTERPRETATION)
     results = []
     for i, item in enumerate(item_cols):
         p = df_scores[item].mean()
@@ -99,8 +102,9 @@ if student_file and key_file:
         # Descriptive Logic
         p_desc = "Easy" if p > 0.7 else "Difficult" if p < 0.3 else "Moderate"
         d_desc = "Excellent" if d >= 0.4 else "Good" if d >= 0.3 else "Fair" if d >= 0.2 else "Poor"
+        r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
-        # Decision (Statistically Sound)
+        # Decision Logic
         if r_pb >= validity_limit and d >= 0.3:
             decision = "RETAIN"
         elif r_pb >= 0.2 and d >= 0.2:
@@ -109,24 +113,32 @@ if student_file and key_file:
             decision = "REJECT"
 
         results.append({
-            "Item": item, "P": p, "P_Eval": p_desc, "Q": q, "PQ": p*q,
-            "D": d, "D_Eval": d_desc, "r_pbis": r_pb, "DECISION": decision
+            "Item": item, 
+            "P": p, "P_Eval": p_desc, 
+            "Q": q, "PQ": p*q,
+            "D": d, "D_Eval": d_desc, 
+            "r_pbis": r_pb, "r_Eval": r_desc, 
+            "DECISION": decision
         })
 
     df_res = pd.DataFrame(results)
 
-    # 5. TEST-LEVEL STATISTICS (KR-20 & SEM)
+    # 5. TEST-LEVEL STATISTICS (KR-20, SEM, MEAN, SD)
+    mean_score = total_scores.mean()
+    std_score = total_scores.std(ddof=1)
     var_total = total_scores.var(ddof=1)
     kr20 = (n_items/(n_items-1)) * (1 - (df_res["PQ"].sum()/var_total)) if var_total > 0 else 0
-    sem = total_scores.std(ddof=1) * np.sqrt(1 - kr20)
+    sem = std_score * np.sqrt(1 - kr20)
 
     # METRIC DASHBOARD
     st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Sample Size (N)", n_students)
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Students (N)", n_students)
     m2.metric("Items (k)", n_items)
-    m3.metric("KR-20 Reliability", f"{kr20:.3f}")
-    m4.metric("SEM (Error)", f"{sem:.3f}")
+    m3.metric("Mean Score", f"{mean_score:.2f}")
+    m4.metric("Std. Deviation", f"{std_score:.2f}")
+    m5.metric("KR-20 Reliability", f"{kr20:.3f}")
+    m6.metric("SEM (Error)", f"{sem:.3f}")
 
     # 6. STYLING (TRAFFIC LIGHT)
     def apply_academic_style(row):
@@ -139,11 +151,15 @@ if student_file and key_file:
         if row['D'] >= 0.4: styles[5] = 'background-color: #2ecc71; color: white'
         elif row['D'] < 0.2: styles[5] = 'background-color: #e74c3c; color: white'
         else: styles[5] = 'background-color: #f1c40f'
-        # r_pbis
-        if row['r_pbis'] < validity_limit: styles[7] = 'color: #e74c3c; font-weight: bold'
+        # r_pbis & r_Eval Styling
+        if row['r_pbis'] < validity_limit:
+            styles[7] = 'color: #e74c3c; font-weight: bold'
+            styles[8] = 'background-color: #ffcccc'
+        else:
+            styles[8] = 'background-color: #ccffcc'
         return styles
 
-    st.subheader("📋 Comprehensive Item Statistics Matrix")
+    st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
     st.dataframe(df_res.style.apply(apply_academic_style, axis=1).format("{:.3f}", subset=["P", "Q", "PQ", "D", "r_pbis"]), use_container_width=True)
 
     # 7. AUTOMATIC REPORT
@@ -156,7 +172,7 @@ if student_file and key_file:
         else: st.error(f"Low Reliability ({kr20:.3f}). Caution: Scores may be unstable.")
     with c2:
         st.write("**Standard Error (SEM):**")
-        st.info(f"SEM is {sem:.3f}. This score represents the standard deviation of errors of measurement.")
+        st.info(f"SEM is {sem:.3f}. Angka ini menunjukkan rentang fluktuasi skor murni siswa.")
 
     # 8. DISTRACTOR ANALYSIS
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
@@ -169,4 +185,4 @@ if student_file and key_file:
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='ItemAnalysis')
-    st.download_button("📥 Download Academic Report", data=buf.getvalue(), file_name="Item_Analysis_Report.xlsx")
+    st.download_button("📥 Download Full Academic Report", data=buf.getvalue(), file_name="Item_Analysis_Report.xlsx")
