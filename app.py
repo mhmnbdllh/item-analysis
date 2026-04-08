@@ -170,7 +170,7 @@ if student_file and key_file:
         st.write("**Standard Error of Measurement (SEM):**")
         st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS (MODIFIED SECTION)
+    # 8. DISTRACTOR ANALYSIS (COLOR RESTORED)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
@@ -180,14 +180,17 @@ if student_file and key_file:
         effective = [opt for opt, val in row.items() if val >= 0.05 and opt != "N/A"]
         return f"Effective Options: {', '.join(effective)}" if effective else "No effective distractors"
     
+    # 1. Siapkan DataFrame untuk Web & Excel dengan format gabungan
     df_dist_styled = df_dist[cols].copy()
-    
-    # Apply combined format: 0.1000 (10.00%)
     for col in cols:
-        df_dist_styled[col] = df_dist_styled[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
-    
+        df_dist_styled[col] = df_dist[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
     df_dist_styled['Interpretation'] = df_dist[cols].apply(interpret_distractor, axis=1)
-    st.dataframe(df_dist_styled, use_container_width=True)
+
+    # 2. Terapkan pewarnaan menggunakan nilai angka asli (df_dist) agar tidak ValueError
+    st.dataframe(
+        df_dist_styled.style.background_gradient(cmap='YlGn', subset=cols, gmap=df_dist[cols]), 
+        use_container_width=True
+    )
 
     # 9. PANDUAN MEMBACA DATA (GUIDE)
     guide_data = {
