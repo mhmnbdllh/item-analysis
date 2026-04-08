@@ -171,26 +171,40 @@ if student_file and key_file:
         st.write("**Standard Error of Measurement (SEM):**")
         st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS (FIXED ERROR)
+    # 8. DISTRACTOR ANALYSIS (FINAL STABLE VERSION)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
     
-    # Simpan data angka murni untuk menentukan warna (gradient)
+    # 1. Simpan data angka murni untuk perhitungan warna
     df_dist_num = df_dist[cols].copy()
     
-    # Buat versi teks untuk tampilan & Excel
+    # 2. Buat versi teks untuk Tampilan Web & Excel
     df_dist_final = df_dist[cols].copy()
     for col in cols:
         df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
     
+    # 3. Interpretasi distraktor
     df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([opt for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
 
-    # TAMPILAN WEB: Menggunakan gyler=df_dist_num agar warna muncul pada data teks
+    # 4. FUNGSI PEWARNAAN MANUAL (AGAR TIDAK ERROR LAGI)
+    def color_distractor(text_df):
+        # Membuat dataframe kosong untuk menyimpan style warna
+        color_df = pd.DataFrame('', index=text_df.index, columns=text_df.columns)
+        for col in cols:
+            # Mengambil warna dari data angka (df_dist_num)
+            colors = st.format_dict.get('YlGn') # Placeholder logika warna
+            # Kita gunakan background_gradient versi standar Pandas yang lebih stabil:
+            return df_dist_num.style.background_gradient(cmap='YlGn', subset=cols).data
+        return color_df
+
+    # TAMPILAN WEB (Cara paling stabil: Style pada angka, lalu format tampilannya)
     st.dataframe(
-        df_dist_final.style.background_gradient(cmap='YlGn', subset=cols, axis=None, gyler=df_dist_num),
+        df_dist_num.style
+        .background_gradient(cmap='YlGn', subset=cols)
+        .format(lambda x: f"{x:.4f} ({x:.2%})", subset=cols), 
         use_container_width=True
     )
 
