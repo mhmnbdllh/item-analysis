@@ -22,7 +22,7 @@ st.markdown("""
 st.title("🛡️ RIGOROUS ITEM ANALYSIS TOOL (CTT)")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
-# SIDEBAR: THE COMPREHENSIVE LEGEND
+# SIDEBAR
 with st.sidebar:
     st.header("📊 Methodological Legend")
     
@@ -78,19 +78,16 @@ if student_file and key_file:
     # 4. RIGOROUS CALCULATION
     results = []
     for i, item in enumerate(item_cols):
-        # Correct difficulty index
-        p = df_scores[item].mean()               # Proportion correct
-        q = 1 - p                                # Proportion incorrect
-        
-        # Correct discrimination index (Kelley)
+        # Difficulty index (p)
+        p = df_scores[item].mean()
+        q = 1 - p
+
+        # Discrimination index (ddi = p_upper - p_lower)
         p_up = df_scores.loc[up_idx, item].mean()
         p_lo = df_scores.loc[lo_idx, item].mean()
-        ddi = p_up - p_lo                        # True item discrimination
-        
-        # Correct classical d (item difficulty)
-        d = p                                    
+        ddi = p_up - p_lo
 
-        # Correct point biserial
+        # Point-biserial correlation
         corrected_total = total_scores - df_scores[item]
         r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
 
@@ -112,7 +109,7 @@ if student_file and key_file:
             "p": p, "p_Eval": p_desc, 
             "q": q, "pq": p*q,
             "ddi": ddi, 
-            "d": d, 
+            "d": p, 
             "d_Eval": d_desc, 
             "r_pbis": r_pb, "r_Eval": r_desc, 
             "DECISION": decision
@@ -137,7 +134,7 @@ if student_file and key_file:
     m5.metric("KR-20 Reliability", f"{kr20:.3f}")
     m6.metric("SEM (Error)", f"{sem:.3f}")
 
-    # 6. FULL STATISTICAL STYLING (TRAFFIC LIGHT SYSTEM)
+    # 6. FULL STATISTICAL STYLING
     def apply_full_styling(row):
         styles = [''] * len(row)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
@@ -180,32 +177,17 @@ if student_file and key_file:
         st.write("**Standard Error of Measurement (SEM):**")
         st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS (FINAL STABLE VERSION)
+    # 8. DISTRACTOR ANALYSIS
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
-    
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
-    
-    # 1. Simpan data angka murni untuk perhitungan warna
     df_dist_num = df_dist[cols].copy()
-    
-    # 2. Buat versi teks untuk Tampilan Web & Excel
     df_dist_final = df_dist[cols].copy()
     for col in cols:
         df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
-    
-    # 3. Interpretasi distraktor
     df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([opt for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
 
-    # 4. FUNGSI PEWARNAAN MANUAL (AGAR TIDAK ERROR LAGI)
-    def color_distractor(text_df):
-        color_df = pd.DataFrame('', index=text_df.index, columns=text_df.columns)
-        for col in cols:
-            return df_dist_num.style.background_gradient(cmap='YlGn', subset=cols).data
-        return color_df
-
-    # TAMPILAN WEB (Cara paling stabil: Style pada angka, lalu format tampilannya)
     st.dataframe(
         df_dist_num.style
         .background_gradient(cmap='YlGn', subset=cols)
@@ -213,7 +195,7 @@ if student_file and key_file:
         use_container_width=True
     )
 
-    # 9. PANDUAN MEMBACA DATA (GUIDE)
+    # 9. GUIDE
     guide_data = {
         "Metric": ["Difficulty (d)", "Discrimination (ddi)", "r_pbis", "KR-20", "SEM"],
         "Ideal Range": ["0.30 - 0.70", "≥ 0.30", "≥ Threshold", "≥ 0.70", "Lower is Better"],
@@ -233,7 +215,6 @@ if student_file and key_file:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         df_guide.to_excel(writer, index=False, sheet_name='Reading_Guide')
-        
         workbook = writer.book
         for sheet in writer.sheets.values():
             sheet.set_column('A:Z', 22)
