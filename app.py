@@ -183,7 +183,7 @@ if student_file and key_file:
         st.write("**Standard Error of Measurement (SEM):**")
         st.info(f"SEM is {sem:.3f}. This figure indicates the range of fluctuation in students' true scores.")
 
-    # 8. DISTRACTOR ANALYSIS
+    # 8. DISTRACTOR ANALYSIS (MODIFIED PORTION)
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
@@ -194,8 +194,16 @@ if student_file and key_file:
         return f"Effective Options: {', '.join(effective)}" if effective else "No effective distractors"
     
     df_dist_styled = df_dist[cols].copy()
+    v_asli = df_dist_styled.values # Data asli untuk gradasi warna
+    
+    # Gabungkan format Angka (Persentase)
+    for col in cols:
+        df_dist_styled[col] = df_dist_styled[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
+    
     df_dist_styled['Interpretation'] = df_dist[cols].apply(interpret_distractor, axis=1)
-    st.dataframe(df_dist_styled.style.background_gradient(cmap='YlGn', subset=cols).format("{:.2%}", subset=cols), use_container_width=True)
+    
+    # Render web dengan gmap data asli agar tidak crash
+    st.dataframe(df_dist_styled.style.background_gradient(cmap='YlGn', subset=cols, gmap=v_asli), use_container_width=True)
 
     # 9. PANDUAN MEMBACA DATA (GUIDE)
     guide_data = {
