@@ -92,14 +92,15 @@ if student_file and key_file:
         p_lo = df_scores.loc[lo_idx, item].mean()
         d_val = p_up - p_lo
 
-        distractors = [opt for opt in df[item].unique() if opt != answer_key[i] and opt != "N/A"]
+        distractors = [ str(opt).upper().strip() for opt in df[item].unique() if str(opt).upper().strip() != answer_key[i] and str(opt).upper().strip() != "N/A" ]
         ddi_vals = []
         for opt in distractors:
             u_opt = (df.loc[up_idx, item].astype(str).str.upper().str.strip() == opt).mean()
             l_opt = (df.loc[lo_idx, item].astype(str).str.upper().str.strip() == opt).mean()
-            ddi_vals.append(u_opt - l_opt)
+            ddi_vals.append(l_opt - u_opt)
         
         ddi_final = max(ddi_vals) if ddi_vals else 0
+        worst_ddi = min(ddi_vals) if ddi_vals else 0
 
         corrected_total = total_scores - df_scores[item]
         r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
@@ -114,7 +115,7 @@ if student_file and key_file:
 
         results.append({
             "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": pq, "Var": item_var,
-            "d": d_val, "d_Eval": d_desc, "DDI": ddi_final, 
+            "d": d_val, "d_Eval": d_desc, "Best_DDI": ddi_final, "Worst_DDI": worst_ddi,
             "r_pbis": r_pb, "r_Eval": r_desc, "DECISION": decision
         })
 
@@ -137,6 +138,14 @@ if student_file and key_file:
     m5.metric("KR-20", f"{kr20:.4f}")
     m6.metric("Alpha", f"{alpha:.4f}")
     m7.metric("SEM (Error)", f"{sem:.4f}")
+    
+    st.subheader("🎯 Distractor Functionality Audit")
+    min_ddi_global = df_res["Worst_DDI"].min()
+    
+    if min_ddi_global < 0:
+        st.error(f"**Critical Alert:** A malfunctioning distractor was detected (Minimum DDI: {min_ddi_global:.4f}). Negative values indicate that the distractor is more attractive to high-performing students, suggesting a potential flaw in item construction.")
+    else:
+        st.success("**Perfect Functionality:** No negative DDI detected. All distractors are successfully drawing more students from the lower group than the upper group.")
 
     # --- DESCRIPTIVE INTERPRETATION (WEB) ---
     st.subheader("📝 Descriptive Interpretation")
@@ -160,16 +169,16 @@ if student_file and key_file:
         elif row['d'] >= 0.3: dis_color, txt = '#3498db', 'white'
         elif row['d'] >= 0.2: dis_color, txt = '#f1c40f', 'black'
         else: dis_color, txt = '#e74c3c', 'white'
-        styles[6] = styles[7] = styles[8] = f'background-color: {dis_color}; color: {txt}'
+        styles[6] = styles[7] = styles[8] = styles[9] = f'background-color: {dis_color}; color: {txt}'
         val_bg = '#ccffcc' if row['r_pbis'] >= validity_limit else '#ffcccc'
-        styles[9] = f'background-color: {val_bg}; color: black; font-weight: bold'
-        styles[10] = f'background-color: {val_bg}; color: black'
-        if row['DECISION'] == "RETAIN": styles[11] = 'background-color: #27ae60; color: white; font-weight: bold'
-        elif row['DECISION'] == "REVISE": styles[11] = 'background-color: #f39c12; color: white'
-        else: styles[11] = 'background-color: #c0392b; color: white'
+        styles[10] = f'background-color: {val_bg}; color: black; font-weight: bold'
+        styles[11] = f'background-color: {val_bg}; color: black'
+        if row['DECISION'] == "RETAIN": styles[12] = 'background-color: #27ae60; color: white; font-weight: bold'
+        elif row['DECISION'] == "REVISE": styles[12] = 'background-color: #f39c12; color: white'
+        else: styles[12] = 'background-color: #c0392b; color: white'
         return styles
 
-    st.dataframe(df_res.style.apply(apply_item_styling, axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "DDI", "r_pbis"]), use_container_width=True)
+    st.dataframe(df_res.style.apply(apply_item_styling, axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "Best_DDI", "Worst_DDI", "r_pbis"]), use_container_width=True)
 
     # --- RANKING TABLE ---
     st.subheader("🏆 Student Score Ranking & Grouping")
@@ -210,13 +219,26 @@ if student_file and key_file:
         
         # ADDED: Interpretation Sheet in Excel
         interpretation_data = {
-            "Statistical Category": ["Reliability (KR-20)", "Precision (SEM)", "Item Difficulty (p)", "Item Discrimination (d)"],
-            "Value/Status": [f"{kr20:.4f} ({rel_eval})", f"{sem:.4f}", "Varies by item", "Varies by item"],
+            "Statistical Category": [
+                "Reliability (KR-20)", 
+                "Precision (SEM)", 
+                "Item Difficulty (p)", 
+                "Item Discrimination (d)",
+                "Distractor Function (DDI)"
+            ],
+            "Value/Status": [
+                f"{kr20:.4f} ({rel_eval})", 
+                f"{sem:.4f}", 
+                "Varies by item", 
+                "Varies by item",
+                f"{min_ddi_global:.4f} (Global Min)"
+            ],
             "Descriptive Interpretation": [
                 f"The instrument shows {rel_eval} reliability. High values (>0.70) indicate consistency in measurement.",
                 f"The standard error of {sem:.4f} suggests the margin of error for individual scores.",
                 "Items with p-values between 0.30 and 0.70 are methodologically preferred for balanced tests.",
-                "Items with d >= 0.30 effectively distinguish between high and low performing students."
+                "Items with d >= 0.30 effectively distinguish between high and low performing students.",
+                "Negative Worst_DDI indicates a malfunctioning distractor that confuses high-ability students and must be revised."
             ]
         }
         pd.DataFrame(interpretation_data).to_excel(writer, index=False, sheet_name='Interpretive_Report')
