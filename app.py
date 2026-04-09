@@ -73,7 +73,9 @@ if student_file and key_file:
     for i, item in enumerate(item_cols):
         p = df_scores[item].mean()
         q = 1 - p
-        item_var = df_scores[item].var(ddof=1)
+        pq = p * q
+        # FIX: Force population variance (ddof=0) to align with p*q logic
+        item_var = df_scores[item].var(ddof=0)
 
         p_up = df_scores.loc[up_idx, item].mean()
         p_lo = df_scores.loc[lo_idx, item].mean()
@@ -100,21 +102,21 @@ if student_file and key_file:
         else: decision = "REJECT"
 
         results.append({
-            "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": p*q, "Var": item_var,
+            "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": pq, "Var": item_var,
             "d": d_val, "d_Eval": d_desc, "DDI": ddi_final, 
             "r_pbis": r_pb, "r_Eval": r_desc, "DECISION": decision
         })
 
     df_res = pd.DataFrame(results)
 
-    # 5. TEST-LEVEL STATISTICS (KR-20 & CRONBACH ALPHA)
+    # 5. TEST-LEVEL STATISTICS (FIXED SYNCHRONIZATION)
     mean_score = total_scores.mean()
-    std_score = total_scores.std(ddof=1)
-    var_total = total_scores.var(ddof=1)
+    # Use population variance (ddof=0) for consistency across all CTT metrics
+    var_total = total_scores.var(ddof=0)
+    std_score = np.sqrt(var_total)
     
-    # KR-20 for dichotomous data
+    # KR-20 and Alpha are now identical
     kr20 = (n_items/(n_items-1)) * (1 - (df_res["pq"].sum()/var_total)) if var_total > 0 else 0
-    # Cronbach's Alpha (General form)
     alpha = (n_items/(n_items-1)) * (1 - (df_res["Var"].sum()/var_total)) if var_total > 0 else 0
     
     sem = std_score * np.sqrt(1 - kr20)
@@ -125,11 +127,10 @@ if student_file and key_file:
     m2.metric("Items (k)", n_items)
     m3.metric("Mean Score", f"{mean_score:.2f}")
     m4.metric("Std. Deviation", f"{std_score:.2f}")
-    m5.metric("KR-20", f"{kr20:.3f}")
-    m6.metric("Alpha", f"{alpha:.3f}")
-    m7.metric("SEM (Error)", f"{sem:.3f}")
+    m5.metric("KR-20", f"{kr20:.4f}")
+    m6.metric("Alpha", f"{alpha:.4f}")
+    m7.metric("SEM (Error)", f"{sem:.4f}")
 
-    # 6. FULL STYLING
     def apply_full_styling(row):
         styles = [''] * len(row)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
@@ -154,7 +155,7 @@ if student_file and key_file:
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
     st.dataframe(
         df_res.style.apply(apply_full_styling, axis=1)
-        .format("{:.3f}", subset=["p", "q", "pq", "Var", "d", "DDI", "r_pbis"]), 
+        .format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "DDI", "r_pbis"]), 
         use_container_width=True
     )
 
@@ -162,18 +163,18 @@ if student_file and key_file:
     st.header("📝 Methodological Interpretation")
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.write("**Reliability (KR-20 & Alpha):**")
-        reliability = max(kr20, alpha)
-        if reliability >= 0.9: st.success(f"Excellent ({reliability:.3f}). Extremely consistent.")
-        elif reliability >= 0.7: st.success(f"High Reliability ({reliability:.3f}). Instrument is consistent.")
-        elif reliability >= 0.6: st.warning(f"Acceptable ({reliability:.3f}). Consider adding more items.")
-        else: st.error(f"Low Reliability ({reliability:.3f}). Scores are unstable.")
+        st.write("**Reliability Status:**")
+        reliability = kr20
+        if reliability >= 0.9: st.success(f"Excellent ({reliability:.4f}).")
+        elif reliability >= 0.7: st.success(f"High Reliability ({reliability:.4f}).")
+        elif reliability >= 0.6: st.warning(f"Acceptable ({reliability:.4f}).")
+        else: st.error(f"Low Reliability ({reliability:.4f}).")
     with c2:
-        st.write("**Alpha vs KR-20 Note:**")
-        st.info("Since your data is dichotomous (0/1), KR-20 and Alpha should be identical. Alpha is included here for psychometric verification.")
+        st.write("**Mathematical Note:**")
+        st.info("KR-20 and Cronbach's Alpha are identical here because the analysis uses Population Variance, adhering to the fundamental identity for dichotomous data.")
     with c3:
         st.write("**SEM (Standard Error):**")
-        st.info(f"SEM is {sem:.3f}. This indicates the range of fluctuation in students' true scores.")
+        st.info(f"SEM is {sem:.4f}. This indicates the fluctuation range of true scores.")
 
     # 8. DISTRACTOR ANALYSIS
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
@@ -194,4 +195,3 @@ if student_file and key_file:
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
             
     st.download_button(label="📥 Download Full Report", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx")
-    
