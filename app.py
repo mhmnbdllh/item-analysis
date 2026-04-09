@@ -74,7 +74,7 @@ if student_file and key_file:
         p = df_scores[item].mean()
         q = 1 - p
         pq = p * q
-        # FIX: Force population variance (ddof=0) to align with p*q logic
+        # FORCE: Population variance (ddof=0) for theoretical consistency
         item_var = df_scores[item].var(ddof=0)
 
         p_up = df_scores.loc[up_idx, item].mean()
@@ -111,14 +111,11 @@ if student_file and key_file:
 
     # 5. TEST-LEVEL STATISTICS (FIXED SYNCHRONIZATION)
     mean_score = total_scores.mean()
-    # Use population variance (ddof=0) for consistency across all CTT metrics
     var_total = total_scores.var(ddof=0)
     std_score = np.sqrt(var_total)
     
-    # KR-20 and Alpha are now identical
     kr20 = (n_items/(n_items-1)) * (1 - (df_res["pq"].sum()/var_total)) if var_total > 0 else 0
     alpha = (n_items/(n_items-1)) * (1 - (df_res["Var"].sum()/var_total)) if var_total > 0 else 0
-    
     sem = std_score * np.sqrt(1 - kr20)
 
     st.divider()
@@ -131,6 +128,7 @@ if student_file and key_file:
     m6.metric("Alpha", f"{alpha:.4f}")
     m7.metric("SEM (Error)", f"{sem:.4f}")
 
+    # 6. STYLING FUNCTION
     def apply_full_styling(row):
         styles = [''] * len(row)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
@@ -171,10 +169,10 @@ if student_file and key_file:
         else: st.error(f"Low Reliability ({reliability:.4f}).")
     with c2:
         st.write("**Mathematical Note:**")
-        st.info("KR-20 and Cronbach's Alpha are identical here because the analysis uses Population Variance, adhering to the fundamental identity for dichotomous data.")
+        st.info("KR-20 and Cronbach's Alpha are identical here because the analysis uses Population Variance (ddof=0).")
     with c3:
         st.write("**SEM (Standard Error):**")
-        st.info(f"SEM is {sem:.4f}. This indicates the fluctuation range of true scores.")
+        st.info(f"SEM is {sem:.4f}. Fluctuation range of true scores.")
 
     # 8. DISTRACTOR ANALYSIS
     st.subheader("🎯 Distractor Effectiveness (Option Frequency)")
@@ -189,9 +187,25 @@ if student_file and key_file:
 
     st.dataframe(df_dist_num.style.background_gradient(cmap='YlGn', subset=cols).format(lambda x: f"{x:.4f} ({x:.2%})", subset=cols), use_container_width=True)
 
+    # 9. INTEGRATED EXCEL EXPORT (ALL WEB DATA INCLUDED)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
+        # Sheet 1: Matrix Data
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
+        
+        # Sheet 2: Distractor Data
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
+        
+        # Sheet 3: Reliability & Summary Metrics (Everything in the metrics bar)
+        summary_data = {
+            "Statistic Metric": ["Students (N)", "Items (k)", "Mean Score", "Std. Deviation", "KR-20", "Cronbach's Alpha", "SEM"],
+            "Value": [n_students, n_items, mean_score, std_score, kr20, alpha, sem]
+        }
+        pd.DataFrame(summary_data).to_excel(writer, index=False, sheet_name='Reliability_Summary')
             
-    st.download_button(label="📥 Download Full Report", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx")
+    st.download_button(
+        label="📥 Download Full Report (3 Sheets)", 
+        data=buf.getvalue(), 
+        file_name="Complete_Item_Analysis_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
