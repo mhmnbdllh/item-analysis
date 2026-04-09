@@ -105,9 +105,17 @@ if student_file and key_file:
         else: decision = "REJECT"
 
         results.append({
-            "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": p*q,
-            "d": d_val, "DDI": ddi_final, "d_Eval": d_desc, 
-            "r_pbis": r_pb, "r_Eval": r_desc, "DECISION": decision
+            "Item": item, 
+            "p": p, 
+            "p_Eval": p_desc, 
+            "q": q, 
+            "pq": p*q,
+            "d": d_val,       # d dan d_Eval sekarang berdampingan
+            "d_Eval": d_desc, 
+            "DDI": ddi_final, # DDI dipindah ke kanan
+            "r_pbis": r_pb, 
+            "r_Eval": r_desc, 
+            "DECISION": decision
         })
 
     df_res = pd.DataFrame(results)
@@ -131,23 +139,30 @@ if student_file and key_file:
     # 6. FULL STYLING
     def apply_full_styling(row):
         styles = [''] * len(row)
-        # p styling (Col 1-2)
+        
+        # p styling (Col 1-2: p dan p_Eval)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
         styles[1] = styles[2] = f'background-color: {dif_color}; color: black'
-        # d & DDI styling (Col 5-7)
+        
+        # d & DDI styling (Col 5-7: d, d_Eval, dan DDI)
         if row['d'] >= 0.4: dis_color, txt = '#2ecc71', 'white'
         elif row['d'] >= 0.3: dis_color, txt = '#3498db', 'white'
         elif row['d'] >= 0.2: dis_color, txt = '#f1c40f', 'black'
         else: dis_color, txt = '#e74c3c', 'white'
+        
+        # styles[5] = d, styles[6] = d_Eval, styles[7] = DDI
         styles[5] = styles[6] = styles[7] = f'background-color: {dis_color}; color: {txt}'
-        # r_pbis styling
+        
+        # r_pbis styling (Col 8-9: r_pbis dan r_Eval)
         val_bg = '#ccffcc' if row['r_pbis'] >= validity_limit else '#ffcccc'
         styles[8] = f'background-color: {val_bg}; color: black; font-weight: bold'
         styles[9] = f'background-color: {val_bg}; color: black'
-        # Decision styling
+        
+        # Decision styling (Col 10)
         if row['DECISION'] == "RETAIN": styles[10] = 'background-color: #27ae60; color: white; font-weight: bold'
         elif row['DECISION'] == "REVISE": styles[10] = 'background-color: #f39c12; color: white'
         else: styles[10] = 'background-color: #c0392b; color: white'
+        
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
