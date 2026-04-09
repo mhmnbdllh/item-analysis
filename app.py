@@ -55,7 +55,7 @@ if student_file and key_file:
     df = pd.read_csv(student_file).fillna("N/A")
     df_key = pd.read_csv(key_file)
     item_cols = df.columns[1:] 
-    student_names = df.iloc[:, 0] # Ambil kolom pertama (Nama/ID)
+    id_col_name = df.columns[0]
     answer_key = df_key.iloc[0, 1:].astype(str).str.upper().str.strip().tolist()
     
     df_scores = pd.DataFrame()
@@ -76,8 +76,8 @@ if student_file and key_file:
     df_sorted.iloc[:n_group, df_sorted.columns.get_loc('Group')] = 'Upper'
     df_sorted.iloc[-n_group:, df_sorted.columns.get_loc('Group')] = 'Lower'
     
-    # Final Table for Scores (Only Name, Score, Rank, Group)
-    df_ranking = df_sorted[[df.columns[0], 'Total_Score', 'Rank', 'Group']].copy()
+    # Ranking Table Summary
+    df_ranking = df_sorted[[id_col_name, 'Total_Score', 'Rank', 'Group']].copy()
 
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
 
@@ -138,7 +138,7 @@ if student_file and key_file:
     m6.metric("Alpha", f"{alpha:.4f}")
     m7.metric("SEM (Error)", f"{sem:.4f}")
 
-    # --- MAIN DATA TABLE ---
+    # --- ITEM MATRIX ---
     st.subheader("📋 Comprehensive Item Statistics Matrix")
     def apply_item_styling(row):
         styles = [''] * len(row)
@@ -159,21 +159,18 @@ if student_file and key_file:
 
     st.dataframe(df_res.style.apply(apply_item_styling, axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "DDI", "r_pbis"]), use_container_width=True)
 
-    # --- NEW: STUDENT RANKING TABLE ---
+    # --- RANKING TABLE ---
     st.subheader("🏆 Student Score Ranking & Grouping")
     def apply_rank_styling(row):
         style = [''] * len(row)
-        if row['Group'] == 'Upper':
-            bg_color = '#d4edda' # Light Green
-        elif row['Group'] == 'Lower':
-            bg_color = '#f8d7da' # Light Red
-        else:
-            bg_color = 'white'
+        if row['Group'] == 'Upper': bg_color = '#d4edda'
+        elif row['Group'] == 'Lower': bg_color = '#f8d7da'
+        else: bg_color = 'white'
         return [f'background-color: {bg_color}; color: black'] * len(row)
 
     st.dataframe(df_ranking.style.apply(apply_rank_styling, axis=1), use_container_width=True)
 
-    # --- DISTRACTOR & INTERPRETATION ---
+    # --- DISTRACTORS ---
     st.divider()
     st.subheader("🎯 Distractor Effectiveness")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
@@ -181,9 +178,12 @@ if student_file and key_file:
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
     df_dist_final = df_dist[cols].copy()
     for col in cols: df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
+    
+    df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
+    
     st.dataframe(df_dist[cols].style.background_gradient(cmap='YlGn'), use_container_width=True)
 
-    # --- EXCEL DOWNLOAD (4 SHEETS) ---
+    # --- EXCEL DOWNLOAD (4 SHEETS - FULL ENGLISH) ---
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
