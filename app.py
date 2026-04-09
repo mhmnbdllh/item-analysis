@@ -28,17 +28,17 @@ with st.sidebar:
         st.write("""
         Shows the difficulty level of the test item.
         - **Easy (p > 0.70):** 🟢
-        - **Moderate (0.30 - 0.70):** 🟡 (Ideal/Accepted)
+        - **Moderate (0.30 - 0.70):** 🟡
         - **Difficult (p < 0.30):** 🔴
         """)
 
-    with st.expander("2. Discrimination (D/ddi)", expanded=True):
+    with st.expander("2. Discrimination Index (d)", expanded=True):
         st.write("""
         The ability to distinguish between high and low-performing students.
-        - **Excellent (D ≥ 0.40):** 🟢
+        - **Excellent (d ≥ 0.40):** 🟢
         - **Good (0.30 - 0.39):** 🔵
-        - **Fair (0.20 - 0.29):** 🟡 (Revision Required)
-        - **Poor (D < 0.20):** 🔴 (Reject/Discard)
+        - **Fair (0.20 - 0.29):** 🟡
+        - **Poor (d < 0.20):** 🔴
         """)
 
     st.header("⚙️ Settings")
@@ -69,43 +69,40 @@ if student_file and key_file:
     df_sorted = df.sort_values('Total_Score', ascending=False)
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
 
-    # 4. RIGOROUS CALCULATION (REPAIRED)
+    # 4. RIGOROUS CALCULATION (REPAIRED & CLEANED)
     results = []
     for i, item in enumerate(item_cols):
-        # p = Difficulty (Proporsi Benar)
+        # p = Difficulty (Proporsi Benar Total)
         p = df_scores[item].mean()
         q = 1 - p
 
-        # ddi = Discrimination Index (p_upper - p_lower)
+        # d = Discrimination (p_upper - p_lower)
         p_up = df_scores.loc[up_idx, item].mean()
         p_lo = df_scores.loc[lo_idx, item].mean()
-        ddi = p_up - p_lo
+        d_val = p_up - p_lo
 
-        # d = Alias untuk ddi (Discrimination) agar tidak tertukar dengan p
-        d_val = ddi
-
+        # Corrected Point-biserial (Reliable Validity)
         corrected_total = total_scores - df_scores[item]
         r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
 
         p_desc = "Easy" if p > 0.7 else "Difficult" if p < 0.3 else "Moderate"
-        d_desc = "Excellent" if ddi >= 0.4 else "Good" if ddi >= 0.3 else "Fair" if ddi >= 0.2 else "Poor"
+        d_desc = "Excellent" if d_val >= 0.4 else "Good" if d_val >= 0.3 else "Fair" if d_val >= 0.2 else "Poor"
         r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
-        if r_pb >= validity_limit and ddi >= 0.3:
+        if r_pb >= validity_limit and d_val >= 0.3:
             decision = "RETAIN"
-        elif r_pb >= 0.2 and ddi >= 0.2:
+        elif r_pb >= 0.2 and d_val >= 0.2:
             decision = "REVISE"
         else:
             decision = "REJECT"
 
         results.append({
             "Item": item, 
-            "p": p,             # Difficulty
+            "p": p, 
             "p_Eval": p_desc, 
             "q": q, 
             "pq": p*q,
-            "ddi": ddi,         # Discrimination
-            "d": d_val,         # Discrimination (Rumus D)
+            "d": d_val, 
             "d_Eval": d_desc, 
             "r_pbis": r_pb, 
             "r_Eval": r_desc, 
@@ -131,31 +128,34 @@ if student_file and key_file:
 
     def apply_full_styling(row):
         styles = [''] * len(row)
+        # Style p (Col 1-2)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
         styles[1] = f'background-color: {dif_color}; color: black'
         styles[2] = f'background-color: {dif_color}; color: black'
 
-        if row['ddi'] >= 0.4: dis_color, txt = '#2ecc71', 'white'
-        elif row['ddi'] >= 0.3: dis_color, txt = '#3498db', 'white'
-        elif row['ddi'] >= 0.2: dis_color, txt = '#f1c40f', 'black'
+        # Style d (Col 5-6)
+        if row['d'] >= 0.4: dis_color, txt = '#2ecc71', 'white'
+        elif row['d'] >= 0.3: dis_color, txt = '#3498db', 'white'
+        elif row['d'] >= 0.2: dis_color, txt = '#f1c40f', 'black'
         else: dis_color, txt = '#e74c3c', 'white'
         styles[5] = f'background-color: {dis_color}; color: {txt}'
         styles[6] = f'background-color: {dis_color}; color: {txt}'
-        styles[7] = f'background-color: {dis_color}; color: {txt}'
 
+        # Style r_pbis (Col 7-8)
         val_bg = '#ccffcc' if row['r_pbis'] >= validity_limit else '#ffcccc'
-        styles[8] = f'background-color: {val_bg}; color: black; font-weight: bold'
-        styles[9] = f'background-color: {val_bg}; color: black'
+        styles[7] = f'background-color: {val_bg}; color: black; font-weight: bold'
+        styles[8] = f'background-color: {val_bg}; color: black'
 
-        if row['DECISION'] == "RETAIN": styles[10] = 'background-color: #27ae60; color: white; font-weight: bold'
-        elif row['DECISION'] == "REVISE": styles[10] = 'background-color: #f39c12; color: white'
-        else: styles[10] = 'background-color: #c0392b; color: white'
+        # Style Decision (Col 9)
+        if row['DECISION'] == "RETAIN": styles[9] = 'background-color: #27ae60; color: white; font-weight: bold'
+        elif row['DECISION'] == "REVISE": styles[9] = 'background-color: #f39c12; color: white'
+        else: styles[9] = 'background-color: #c0392b; color: white'
         return styles
 
     st.subheader("📋 Comprehensive Item Statistics Matrix & Validity Report")
     st.dataframe(
         df_res.style.apply(apply_full_styling, axis=1)
-        .format("{:.3f}", subset=["p", "q", "pq", "ddi", "d", "r_pbis"]), 
+        .format("{:.3f}", subset=["p", "q", "pq", "d", "r_pbis"]), 
         use_container_width=True
     )
 
@@ -188,12 +188,12 @@ if student_file and key_file:
     )
 
     guide_data = {
-        "Metric": ["Difficulty (p)", "Discrimination (d/ddi)", "r_pbis", "KR-20", "SEM"],
+        "Metric": ["Difficulty (p)", "Discrimination (d)", "r_pbis", "KR-20", "SEM"],
         "Ideal Range": ["0.30 - 0.70", "≥ 0.30", "≥ Threshold", "≥ 0.70", "Lower is Better"],
         "Description": [
             "Moderate level (p) is best for norm-referenced tests.",
-            "Discrimination distinguishes between high and low achievers.",
-            "Correlation between item and total test score.",
+            "Discrimination (d) distinguishes between high and low achievers.",
+            "Correlation between item and total test score (Corrected).",
             "Internal consistency of the entire test.",
             "Precision of the scores obtained."
         ]
@@ -205,9 +205,6 @@ if student_file and key_file:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         df_guide.to_excel(writer, index=False, sheet_name='Reading_Guide')
-        workbook = writer.book
-        for sheet in writer.sheets.values():
-            sheet.set_column('A:Z', 22)
             
     st.download_button(
         label="📥 Download Full Report",
