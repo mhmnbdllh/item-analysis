@@ -18,7 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("ITEM ANALYSIS TOOL (CTT)")
+st.title("ITEM ANALYSIS TOOL (CTT) by Muhaimin Abdullah")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
 with st.sidebar:
@@ -241,20 +241,23 @@ if student_file and key_file:
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
     
-    # Untuk tampilan web: angka desimal dengan gradient
-    df_dist_web = df_dist[cols].copy()
+    # Buat konfigurasi kolom untuk format persentase
+    column_config = {}
+    for col in cols:
+        column_config[col] = st.column_config.NumberColumn(
+            col,
+            format="%.4f (%.2f%%)"
+        )
     
-    # Untuk Excel: angka dengan persentase
-    df_dist_excel = df_dist[cols].copy()
-    for col in cols: 
-        df_dist_excel[col] = df_dist_excel[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
-    df_dist_excel['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
+    df_dist_final = df_dist[cols].copy()
+    df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
     
-    # TAMPILKAN DI WEB dengan gradient (angka desimal)
-    st.dataframe(df_dist_web.style.background_gradient(cmap='YlGn'), use_container_width=True)
-    
-    # Simpan df_dist_excel untuk export ke Excel (tetap pakai format persentase)
-    df_dist_final = df_dist_excel  # <- ini agar export Excel tetap pakai format persentase
+    # TAMPILKAN dengan format persentase DAN background gradient
+    st.dataframe(
+        df_dist_final.style.background_gradient(cmap='YlGn', subset=cols), 
+        column_config=column_config,
+        use_container_width=True
+    )
 
     # --- EXCEL DOWNLOAD (5 SHEETS - FULL ENGLISH) ---
     buf = io.BytesIO()
