@@ -18,7 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("ITEM ANALYSIS TOOL (CTT) by Muhaimin Abdullah")
+st.title("ITEM ANALYSIS TOOL (CTT) by")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
 with st.sidebar:
@@ -92,12 +92,7 @@ if student_file and key_file:
         p_lo = df_scores.loc[lo_idx, item].mean()
         d_val = p_up - p_lo
 
-        distractors = []
-        for opt in df[item].dropna().astype(str).str.upper().unique():
-            opt_clean = opt.strip()
-            if opt_clean not in ["", "N/A", answer_key[i]]:
-                distractors.append(opt_clean)
-                
+        distractors = [ str(opt).upper().strip() for opt in df[item].unique() if str(opt).upper().strip() != answer_key[i] and str(opt).upper().strip() != "N/A" ]
         ddi_vals = []
         for opt in distractors:
             u_opt = (df.loc[up_idx, item].astype(str).str.upper().str.strip() == opt).mean()
@@ -108,58 +103,20 @@ if student_file and key_file:
         worst_ddi = min(ddi_vals) if ddi_vals else 0
 
         corrected_total = total_scores - df_scores[item]
-        if df_scores[item].var() != 0:
-            r_pb, _ = pointbiserialr(df_scores[item], corrected_total)
-            if np.isnan(r_pb):
-                r_pb = 0
-        else:
-            r_pb = 0
+        r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
 
         p_desc = "Easy" if p > 0.7 else "Difficult" if p < 0.3 else "Moderate"
         d_desc = "Excellent" if d_val >= 0.4 else "Good" if d_val >= 0.3 else "Fair" if d_val >= 0.2 else "Poor"
         r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
-        # --- COMBINED FLAGGING SYSTEM ---
-        reasons = []
-        
-        # cek validitas
-        if r_pb < validity_limit:
-            reasons.append("Low validity")
-        
-        # cek daya beda
-        if d_val < 0.20:
-            reasons.append("Poor discrimination")
-        # cek difficulty ekstrem
-        if p > 0.90:
-            reasons.append("Too easy")
-        
-        if p < 0.20:
-            reasons.append("Too difficult")
-        
-        # cek distractor
-        if worst_ddi < -0.10:
-            reasons.append("Severely flawed distractor")
-        elif worst_ddi < 0:
-            reasons.append("Malfunctioning distractor")
-        
-        # keputusan akhir
-        if (r_pb >= validity_limit) and (d_val >= 0.30) and (worst_ddi >= 0):
-            decision = "RETAIN"
-        
-        elif (r_pb < validity_limit and d_val < 0.20) or (worst_ddi < -0.10):
-            decision = "REJECT"
-        
-        else:
-            decision = "REVISE"
-        
-        reason_text = ", ".join(reasons) if reasons else "All criteria satisfied"
+        if r_pb >= validity_limit and d_val >= 0.3: decision = "RETAIN"
+        elif r_pb >= 0.2 and d_val >= 0.2: decision = "REVISE"
+        else: decision = "REJECT"
 
         results.append({
             "Item": item, "p": p, "p_Eval": p_desc, "q": q, "pq": pq, "Var": item_var,
             "d": d_val, "d_Eval": d_desc, "Best_DDI": ddi_final, "Worst_DDI": worst_ddi,
-            "r_pbis": r_pb, "r_Eval": r_desc,
-            "DECISION": decision,
-            "REASON": reason_text
+            "r_pbis": r_pb, "r_Eval": r_desc, "DECISION": decision
         })
 
     df_res = pd.DataFrame(results)
@@ -240,24 +197,12 @@ if student_file and key_file:
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
-    
-    # Buat konfigurasi kolom untuk format persentase
-    column_config = {}
-    for col in cols:
-        column_config[col] = st.column_config.NumberColumn(
-            col,
-            format="%.4f (%.2f%%)"
-        )
-    
     df_dist_final = df_dist[cols].copy()
+    for col in cols: df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
+    
     df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
     
-    # TAMPILKAN dengan format persentase DAN background gradient
-    st.dataframe(
-        df_dist_final.style.background_gradient(cmap='YlGn', subset=cols), 
-        column_config=column_config,
-        use_container_width=True
-    )
+    st.dataframe(df_dist[cols].style.background_gradient(cmap='YlGn'), use_container_width=True)
 
     # --- EXCEL DOWNLOAD (5 SHEETS - FULL ENGLISH) ---
     buf = io.BytesIO()
