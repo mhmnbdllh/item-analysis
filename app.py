@@ -18,7 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ RIGOROUS ITEM ANALYSIS TOOL (CTT)")
+st.title("ITEM ANALYSIS TOOL (CTT) by Muhaimin Abdullah")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
 with st.sidebar:
