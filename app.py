@@ -248,43 +248,50 @@ if student_file and key_file:
     df_dist_formatted = df_dist[cols].style.format(lambda x: f"{x:.4f} ({x:.2%})").background_gradient(cmap='YlGn')
     st.dataframe(df_dist_formatted, use_container_width=True)
 
-    # --- EXCEL DOWNLOAD (5 SHEETS - FULL ENGLISH) ---
+    # --- EXCEL DOWNLOAD ---
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Item_Analysis')
         df_ranking.to_excel(writer, index=False, sheet_name='Student_Ranking')
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         
-        summary_data = {
-            "Metric": ["Students (N)", "Items (k)", "Mean Score", "Std. Deviation", "KR-20", "Alpha", "SEM"],
-            "Value": [n_students, n_items, mean_score, std_score, kr20, alpha, sem]
-        }
-        pd.DataFrame(summary_data).to_excel(writer, index=False, sheet_name='Reliability_Summary')
-        
-        # ADDED: Interpretation Sheet in Excel
-        interpretation_data = {
-            "Statistical Category": [
-                "Reliability (KR-20)", 
-                "Precision (SEM)", 
-                "Item Difficulty (p)", 
-                "Item Discrimination (d)",
-                "Distractor Function (DDI)"
+        # GABUNGAN Reliability_Summary + Interpretive_Report
+        reliability_interpretation = pd.DataFrame({
+            "Metric": [
+                "Students (N)", 
+                "Items (k)", 
+                "Mean Score", 
+                "Std. Deviation", 
+                "KR-20", 
+                "Alpha", 
+                "SEM",
+                "KR-20 Interpretation",
+                "SEM Interpretation"
             ],
-            "Value/Status": [
-                f"{kr20:.4f} ({rel_eval})", 
-                f"{sem:.4f}", 
-                "Varies by item", 
-                "Varies by item",
-                f"{min_ddi_global:.4f} (Global Min)"
+            "Value": [
+                n_students, 
+                n_items, 
+                f"{mean_score:.2f}", 
+                f"{std_score:.2f}", 
+                f"{kr20:.4f}", 
+                f"{alpha:.4f}", 
+                f"{sem:.4f}",
+                f"{rel_eval} reliability",
+                f"±{sem:.4f} margin of error"
             ],
-            "Descriptive Interpretation": [
+            "Interpretation": [
+                "Total number of test takers",
+                "Total number of items in the test",
+                "Average raw score across all students",
+                "Spread of scores around the mean",
+                f"Internal consistency: {rel_eval}. {'Excellent (>0.90)' if kr20 >= 0.9 else 'High (>0.80)' if kr20 >= 0.8 else 'Acceptable (>0.70)' if kr20 >= 0.7 else 'Low (<0.70)'}",
+                "Alternative reliability coefficient (parallel to KR-20)",
+                "Standard error of measurement. Lower values = higher precision",
                 f"The instrument shows {rel_eval} reliability. High values (>0.70) indicate consistency in measurement.",
-                f"The standard error of {sem:.4f} suggests the margin of error for individual scores.",
-                "Items with p-values between 0.30 and 0.70 are methodologically preferred for balanced tests.",
-                "Items with d >= 0.30 effectively distinguish between high and low performing students.",
-                "Negative Worst_DDI indicates a malfunctioning distractor that confuses high-ability students and must be revised."
+                f"The SEM of {sem:.4f} indicates that a student's observed score may fluctuate within this range relative to their theoretical true score."
             ]
-        }
-        pd.DataFrame(interpretation_data).to_excel(writer, index=False, sheet_name='Interpretive_Report')
+        })
+        
+        reliability_interpretation.to_excel(writer, index=False, sheet_name='Reliability_Interpretation')
             
-    st.download_button(label="📥 Download Full Report (5 Sheets)", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx")
+    st.download_button(label="📥 Download Full Report", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx")
