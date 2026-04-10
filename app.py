@@ -155,7 +155,7 @@ if student_file and key_file:
     st.subheader("🎯 Distractor Functionality Audit")
     min_ddi_global = df_res["Worst_DDI"].min()
     
-    # ========== PERBAIKAN ALERT UNTuk DDI NEGATIF ==========
+    # ========== PERBAIKAN ALERT UNTUK DDI NEGATIF ==========
     if min_ddi_global < 0:
         st.error(f"**Critical Alert:** Distractor with NEGATIVE DDI ({min_ddi_global:.4f}) detected. "
                  f"This means HIGH-PERFORMING students are choosing this distractor more than "
@@ -177,7 +177,9 @@ if student_file and key_file:
 
     # --- ITEM MATRIX ---
     st.subheader("📋 Comprehensive Item Statistics Matrix")
-    def apply_item_styling(row):
+    
+    # ========== PERBAIKAN FUNGSI STYLING ==========
+    def apply_item_styling(row, limit=validity_limit):
         styles = [''] * len(row)
         dif_color = '#ccffcc' if row['p'] > 0.7 else '#ffcccc' if row['p'] < 0.3 else '#fff2cc'
         styles[1] = styles[2] = f'background-color: {dif_color}; color: black'
@@ -186,7 +188,7 @@ if student_file and key_file:
         elif row['d'] >= 0.2: dis_color, txt = '#f1c40f', 'black'
         else: dis_color, txt = '#e74c3c', 'white'
         styles[6] = styles[7] = styles[8] = styles[9] = f'background-color: {dis_color}; color: {txt}'
-        val_bg = '#ccffcc' if row['r_pbis'] >= validity_limit else '#ffcccc'
+        val_bg = '#ccffcc' if row['r_pbis'] >= limit else '#ffcccc'
         styles[10] = f'background-color: {val_bg}; color: black; font-weight: bold'
         styles[11] = f'background-color: {val_bg}; color: black'
         if row['DECISION'] == "RETAIN": styles[12] = 'background-color: #27ae60; color: white; font-weight: bold'
@@ -194,7 +196,7 @@ if student_file and key_file:
         else: styles[12] = 'background-color: #c0392b; color: white'
         return styles
 
-    st.dataframe(df_res.style.apply(apply_item_styling, axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "Best_DDI", "Worst_DDI", "r_pbis"]), use_container_width=True)
+    st.dataframe(df_res.style.apply(lambda row: apply_item_styling(row, validity_limit), axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "Best_DDI", "Worst_DDI", "r_pbis"]), use_container_width=True)
 
     # --- RANKING TABLE ---
     st.subheader("🏆 Student Score Ranking & Grouping")
@@ -210,11 +212,23 @@ if student_file and key_file:
     # --- DISTRACTORS ---
     st.divider()
     st.subheader("🎯 Distractor Effectiveness")
-    dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
+    
+    # ========== PERBAIKAN UNTUK DISTRACTOR DATA ==========
+    dist_data = []
+    for item in item_cols:
+        temp_dict = df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict()
+        temp_dict["Item"] = item
+        dist_data.append(temp_dict)
+    
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
-    cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
+    
+    # ========== PERBAIKAN FILTER KOLOM ==========
+    distractor_cols = [c for c in df_dist.columns if c != 'Item']
+    cols = sorted([c for c in distractor_cols if len(str(c)) == 1]) + sorted([c for c in distractor_cols if len(str(c)) > 1])
+    
     df_dist_final = df_dist[cols].copy()
-    for col in cols: df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
+    for col in cols: 
+        df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
     
     df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
     
