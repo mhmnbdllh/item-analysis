@@ -18,7 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("ITEM ANALYSIS TOOL (CTT) by Muhaimin Abdullah")
+st.title("ITEM ANALYSIS TOOL (CTT) by")
 st.write("Full Classical Test Theory Suite: Methodologically validated metrics for educational research.")
 
 with st.sidebar:
@@ -92,15 +92,28 @@ if student_file and key_file:
         p_lo = df_scores.loc[lo_idx, item].mean()
         d_val = p_up - p_lo
 
-        distractors = [ str(opt).upper().strip() for opt in df[item].unique() if str(opt).upper().strip() != answer_key[i] and str(opt).upper().strip() != "N/A" ]
+        # ========== PERBAIKAN UNTUK DISTRACTOR DDI ==========
+        distractors = []
+        for opt in df[item].dropna().astype(str).str.upper().str.unique():
+            opt_clean = opt.strip()
+            if opt_clean != answer_key[i] and opt_clean != "N/A" and opt_clean != "":
+                distractors.append(opt_clean)
+
         ddi_vals = []
         for opt in distractors:
+            # Proporsi memilih distractor di kelompok atas
             u_opt = (df.loc[up_idx, item].astype(str).str.upper().str.strip() == opt).mean()
+            # Proporsi memilih distractor di kelompok bawah  
             l_opt = (df.loc[lo_idx, item].astype(str).str.upper().str.strip() == opt).mean()
-            ddi_vals.append(l_opt - u_opt)
-        
-        ddi_final = max(ddi_vals) if ddi_vals else 0
-        worst_ddi = min(ddi_vals) if ddi_vals else 0
+            
+            # DDI = proporsi kelompok Bawah - proporsi kelompok Atas
+            # Positif = lebih banyak dipilih kelompok bawah (EFEKTIF)
+            # Negatif = lebih banyak dipilih kelompok atas (MALFUNGSI)
+            ddi = l_opt - u_opt
+            ddi_vals.append(ddi)
+
+        ddi_final = max(ddi_vals) if ddi_vals else 0  # DDI terbaik (paling positif)
+        worst_ddi = min(ddi_vals) if ddi_vals else 0  # DDI terburuk (paling negatif)
 
         corrected_total = total_scores - df_scores[item]
         r_pb, _ = pointbiserialr(df_scores[item], corrected_total) if df_scores[item].var() != 0 else (0,0)
@@ -142,8 +155,11 @@ if student_file and key_file:
     st.subheader("🎯 Distractor Functionality Audit")
     min_ddi_global = df_res["Worst_DDI"].min()
     
+    # ========== PERBAIKAN ALERT UNTuk DDI NEGATIF ==========
     if min_ddi_global < 0:
-        st.error(f"**Critical Alert:** A malfunctioning distractor was detected (Minimum DDI: {min_ddi_global:.4f}). Negative values indicate that the distractor is more attractive to high-performing students, suggesting a potential flaw in item construction.")
+        st.error(f"**Critical Alert:** Distractor with NEGATIVE DDI ({min_ddi_global:.4f}) detected. "
+                 f"This means HIGH-PERFORMING students are choosing this distractor more than "
+                 f"low-performing students - a serious flaw requiring immediate revision.")
     else:
         st.success("**Perfect Functionality:** No negative DDI detected. All distractors are successfully drawing more students from the lower group than the upper group.")
 
