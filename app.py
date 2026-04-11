@@ -4,8 +4,7 @@ import numpy as np
 from scipy.stats import pointbiserialr
 import io
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-import matplotlib.patches as mpatches
+import plotly.graph_objects as go
 
 # ======================================================================
 # ACADEMIC ITEM ANALYSIS - RIGOROUS ENGLISH VERSION (2026)
@@ -73,13 +72,11 @@ if student_file and key_file:
     n_group = max(1, int(np.ceil(n_students * group_percent / 100)))
     df_sorted = df.sort_values('Total_Score', ascending=False).copy()
     
-    # Create Rank and Group Marker
     df_sorted['Rank'] = range(1, n_students + 1)
     df_sorted['Group'] = 'Middle'
     df_sorted.iloc[:n_group, df_sorted.columns.get_loc('Group')] = 'Upper'
     df_sorted.iloc[-n_group:, df_sorted.columns.get_loc('Group')] = 'Lower'
     
-    # Ranking Table Summary
     df_ranking = df_sorted[[id_col_name, 'Total_Score', 'Rank', 'Group']].copy()
 
     up_idx, lo_idx = df_sorted.head(n_group).index, df_sorted.tail(n_group).index
@@ -122,7 +119,6 @@ if student_file and key_file:
         d_desc = "Excellent" if d_val >= 0.4 else "Good" if d_val >= 0.3 else "Fair" if d_val >= 0.2 else "Poor"
         r_desc = "Valid" if r_pb >= validity_limit else "Invalid"
         
-        # --- COMBINED FLAGGING SYSTEM ---
         reasons = []
         
         if r_pb < validity_limit:
@@ -180,7 +176,7 @@ if student_file and key_file:
     m7.metric("SEM (Error)", f"{sem:.4f}")
     
     # ======================================================================
-    # PROFESSIONAL VISUALIZATION SECTION - PUBLICATION QUALITY
+    # VISUALIZATION SECTION
     # ======================================================================
     
     st.markdown("---")
@@ -190,10 +186,9 @@ if student_file and key_file:
     # ----------------------------------------------------------------------
     # FIGURE 1: STACKED BAR CHART (p & q)
     # ----------------------------------------------------------------------
-    st.markdown("<h3 style='color: #2c3e50; margin-top: 30px;'>📍 Figure 1. Item Difficulty Distribution</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Stacked bar chart showing proportion of correct (green) vs incorrect (red) responses per item. Horizontal dashed lines indicate difficulty thresholds.</i></p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #2c3e50;'>📍 Figure 1. Item Difficulty Distribution (p vs q)</h3>", unsafe_allow_html=True)
     
-    fig1 = plt.figure(figsize=(14, 7), facecolor='white', dpi=100)
+    fig1 = plt.figure(figsize=(14, 6), facecolor='white', dpi=100)
     ax1 = fig1.add_subplot(111)
     ax1.set_facecolor('#fafafa')
     
@@ -201,33 +196,24 @@ if student_file and key_file:
     p_vals = df_res['p'].tolist()
     q_vals = df_res['q'].tolist()
     
-    bars_p = ax1.bar(items, p_vals, width=0.7, color='#2ecc71', 
-                     label='p (Proportion Correct)', edgecolor='white', linewidth=1, zorder=3)
-    bars_q = ax1.bar(items, q_vals, bottom=p_vals, width=0.7, color='#e74c3c', 
-                     label='q (Proportion Incorrect)', edgecolor='white', linewidth=1, zorder=3)
+    ax1.bar(items, p_vals, width=0.7, color='#2ecc71', label='p (Correct)', edgecolor='white', linewidth=1)
+    ax1.bar(items, q_vals, bottom=p_vals, width=0.7, color='#e74c3c', label='q (Incorrect)', edgecolor='white', linewidth=1)
     
     for i, (p, q) in enumerate(zip(p_vals, q_vals)):
         if p > 0.08:
-            ax1.text(i, p/2, f'{p:.3f}', ha='center', va='center', fontsize=10, 
-                    color='white', fontweight='bold')
+            ax1.text(i, p/2, f'{p:.3f}', ha='center', va='center', fontsize=9, color='white', fontweight='bold')
         if q > 0.08:
-            ax1.text(i, p + q/2, f'{q:.3f}', ha='center', va='center', fontsize=10, 
-                    color='white', fontweight='bold')
+            ax1.text(i, p + q/2, f'{q:.3f}', ha='center', va='center', fontsize=9, color='white', fontweight='bold')
     
-    ax1.axhline(y=0.70, color='#27ae60', linestyle='--', alpha=0.8, linewidth=2, zorder=4)
-    ax1.axhline(y=0.30, color='#e67e22', linestyle='--', alpha=0.8, linewidth=2, zorder=4)
+    ax1.axhline(y=0.70, color='#27ae60', linestyle='--', linewidth=2, label='Easy threshold (0.70)')
+    ax1.axhline(y=0.30, color='#e67e22', linestyle='--', linewidth=2, label='Difficult threshold (0.30)')
     
-    ax1.set_xlabel('Item Number', fontsize=13, fontweight='bold')
-    ax1.set_ylabel('Proportion of Responses', fontsize=13, fontweight='bold')
-    ax1.set_title('Item Difficulty Distribution: p (Correct) vs q (Incorrect)', 
-                 fontsize=15, fontweight='bold', pad=15)
-    ax1.set_ylim(0, 1.02)
-    ax1.set_xticks(range(len(items)))
-    ax1.set_xticklabels(items, rotation=45, ha='right', fontsize=10)
-    ax1.set_yticks(np.arange(0, 1.1, 0.1))
-    ax1.set_yticklabels([f'{x:.0%}' for x in np.arange(0, 1.1, 0.1)], fontsize=10)
-    ax1.grid(axis='y', alpha=0.3, linestyle='-', linewidth=0.5, zorder=0)
-    ax1.legend(loc='upper right', fontsize=11, framealpha=0.95, fancybox=True, shadow=True)
+    ax1.set_xlabel('Item', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('Proportion', fontsize=12, fontweight='bold')
+    ax1.set_ylim(0, 1)
+    ax1.set_xticklabels(items, rotation=45, ha='right')
+    ax1.legend(loc='upper right')
+    ax1.grid(axis='y', alpha=0.3)
     
     plt.tight_layout()
     st.pyplot(fig1)
@@ -237,7 +223,6 @@ if student_file and key_file:
     # FIGURE 2: DISCRIMINATION INDEX
     # ----------------------------------------------------------------------
     st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 2. Item Discrimination Index (d)</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Higher values indicate better item discrimination. Color coding: Green (Excellent ≥0.40), Blue (Good ≥0.30), Yellow (Fair ≥0.20), Red (Poor <0.20).</i></p>", unsafe_allow_html=True)
     
     def get_d_color(d_val):
         if d_val >= 0.4: return '#2ecc71'
@@ -251,27 +236,22 @@ if student_file and key_file:
     ax2 = fig2.add_subplot(111)
     ax2.set_facecolor('#fafafa')
     
-    bars_d = ax2.bar(items, df_res['d'], width=0.7, color=colors_d, 
-                     edgecolor='black', linewidth=0.8, zorder=3)
+    bars_d = ax2.bar(items, df_res['d'], width=0.7, color=colors_d, edgecolor='black', linewidth=0.8)
     
     for bar, d_val in zip(bars_d, df_res['d']):
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height + 0.015, f'{d_val:.3f}', 
+        ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.01, f'{d_val:.3f}', 
                 ha='center', va='bottom', fontsize=9, fontweight='bold')
     
-    ax2.axhline(y=0.40, color='#2ecc71', linestyle='--', alpha=0.8, linewidth=2, label='Excellent (≥0.40)')
-    ax2.axhline(y=0.30, color='#3498db', linestyle='--', alpha=0.8, linewidth=2, label='Good (≥0.30)')
-    ax2.axhline(y=0.20, color='#f1c40f', linestyle='--', alpha=0.8, linewidth=2, label='Fair (≥0.20)')
+    ax2.axhline(y=0.40, color='#2ecc71', linestyle='--', linewidth=2, label='Excellent (≥0.40)')
+    ax2.axhline(y=0.30, color='#3498db', linestyle='--', linewidth=2, label='Good (≥0.30)')
+    ax2.axhline(y=0.20, color='#f1c40f', linestyle='--', linewidth=2, label='Fair (≥0.20)')
     
-    ax2.set_xlabel('Item Number', fontsize=13, fontweight='bold')
-    ax2.set_ylabel('Discrimination Index (d)', fontsize=13, fontweight='bold')
-    ax2.set_title('Item Discrimination Index - Upper-Lower Group Method', 
-                 fontsize=15, fontweight='bold', pad=15)
-    ax2.set_ylim(-0.05, 1.05)
-    ax2.set_xticks(range(len(items)))
-    ax2.set_xticklabels(items, rotation=45, ha='right', fontsize=10)
-    ax2.grid(axis='y', alpha=0.3, linestyle='-', linewidth=0.5, zorder=0)
-    ax2.legend(loc='upper left', fontsize=10, framealpha=0.95, fancybox=True, shadow=True)
+    ax2.set_xlabel('Item', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Discrimination Index (d)', fontsize=12, fontweight='bold')
+    ax2.set_ylim(-0.05, 1.0)
+    ax2.set_xticklabels(items, rotation=45, ha='right')
+    ax2.legend(loc='upper left')
+    ax2.grid(axis='y', alpha=0.3)
     
     plt.tight_layout()
     st.pyplot(fig2)
@@ -281,7 +261,6 @@ if student_file and key_file:
     # FIGURE 3: POINT-BISERIAL CORRELATION
     # ----------------------------------------------------------------------
     st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 3. Point-Biserial Correlation (r_pbis)</h3>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Correlation between item score and total test score. Green bars exceed the validity threshold ({validity_limit}), indicating valid items.</i></p>", unsafe_allow_html=True)
     
     colors_r = ['#2ecc71' if r >= validity_limit else '#e74c3c' for r in df_res['r_pbis']]
     
@@ -289,31 +268,22 @@ if student_file and key_file:
     ax3 = fig3.add_subplot(111)
     ax3.set_facecolor('#fafafa')
     
-    bars_r = ax3.bar(items, df_res['r_pbis'], width=0.7, color=colors_r, 
-                     edgecolor='black', linewidth=0.8, zorder=3)
+    bars_r = ax3.bar(items, df_res['r_pbis'], width=0.7, color=colors_r, edgecolor='black', linewidth=0.8)
     
     for bar, r_val in zip(bars_r, df_res['r_pbis']):
-        height = bar.get_height()
-        if r_val >= 0:
-            ax3.text(bar.get_x() + bar.get_width()/2., height + 0.02, f'{r_val:.3f}', 
-                    ha='center', va='bottom', fontsize=9, fontweight='bold')
-        else:
-            ax3.text(bar.get_x() + bar.get_width()/2., height - 0.03, f'{r_val:.3f}', 
-                    ha='center', va='top', fontsize=9, fontweight='bold')
+        y_pos = bar.get_height() + 0.02 if r_val >= 0 else bar.get_height() - 0.05
+        va = 'bottom' if r_val >= 0 else 'top'
+        ax3.text(bar.get_x() + bar.get_width()/2., y_pos, f'{r_val:.3f}', ha='center', va=va, fontsize=9, fontweight='bold')
     
-    ax3.axhline(y=validity_limit, color='#e74c3c', linestyle='--', alpha=0.8, linewidth=2, 
-                label=f'Validity Threshold ({validity_limit})')
-    ax3.axhline(y=0, color='#95a5a6', linestyle='-', alpha=0.5, linewidth=1)
+    ax3.axhline(y=validity_limit, color='#e74c3c', linestyle='--', linewidth=2, label=f'Threshold: {validity_limit}')
+    ax3.axhline(y=0, color='gray', linestyle='-', alpha=0.5)
     
-    ax3.set_xlabel('Item Number', fontsize=13, fontweight='bold')
-    ax3.set_ylabel('Point-Biserial Correlation (r_pbis)', fontsize=13, fontweight='bold')
-    ax3.set_title('Item-Whole Correlation: Point-Biserial Coefficient', 
-                 fontsize=15, fontweight='bold', pad=15)
-    ax3.set_ylim(-0.55, 1.05)
-    ax3.set_xticks(range(len(items)))
-    ax3.set_xticklabels(items, rotation=45, ha='right', fontsize=10)
-    ax3.grid(axis='y', alpha=0.3, linestyle='-', linewidth=0.5, zorder=0)
-    ax3.legend(loc='upper left', fontsize=10, framealpha=0.95, fancybox=True, shadow=True)
+    ax3.set_xlabel('Item', fontsize=12, fontweight='bold')
+    ax3.set_ylabel('Point-Biserial Correlation (r_pbis)', fontsize=12, fontweight='bold')
+    ax3.set_ylim(-0.5, 1.0)
+    ax3.set_xticklabels(items, rotation=45, ha='right')
+    ax3.legend(loc='upper left')
+    ax3.grid(axis='y', alpha=0.3)
     
     plt.tight_layout()
     st.pyplot(fig3)
@@ -323,207 +293,138 @@ if student_file and key_file:
     # FIGURE 4: SCORE DISTRIBUTION HISTOGRAM
     # ----------------------------------------------------------------------
     st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 4. Total Score Distribution</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Histogram of total test scores with mean (green) and median (orange) indicators.</i></p>", unsafe_allow_html=True)
     
     fig4 = plt.figure(figsize=(14, 6), facecolor='white', dpi=100)
     ax4 = fig4.add_subplot(111)
     ax4.set_facecolor('#fafafa')
     
-    n_bins = min(15, len(np.unique(total_scores)))
-    ax4.hist(total_scores, bins=n_bins, color='#3498db', edgecolor='white', 
-             linewidth=1.5, alpha=0.7, density=False, zorder=3)
+    ax4.hist(total_scores, bins=min(15, len(np.unique(total_scores))), color='#3498db', edgecolor='white', alpha=0.7)
+    ax4.axvline(x=mean_score, color='#2ecc71', linestyle='-', linewidth=2.5, label=f'Mean: {mean_score:.2f}')
+    ax4.axvline(x=total_scores.median(), color='#e67e22', linestyle='--', linewidth=2.5, label=f'Median: {total_scores.median():.2f}')
     
-    ax4.axvline(x=mean_score, color='#2ecc71', linestyle='-', linewidth=2.5, 
-                label=f'Mean = {mean_score:.2f}', zorder=4)
-    ax4.axvline(x=total_scores.median(), color='#e67e22', linestyle='--', linewidth=2.5, 
-                label=f'Median = {total_scores.median():.2f}', zorder=4)
-    
-    ax4.set_xlabel('Total Score', fontsize=13, fontweight='bold')
-    ax4.set_ylabel('Frequency', fontsize=13, fontweight='bold')
-    ax4.set_title('Distribution of Total Test Scores', fontsize=15, fontweight='bold', pad=15)
-    ax4.grid(axis='y', alpha=0.3, linestyle='-', linewidth=0.5, zorder=0)
-    ax4.legend(loc='upper right', fontsize=11, framealpha=0.95, fancybox=True, shadow=True)
-    
-    stats_text = f'N = {n_students}\nMin = {total_scores.min():.0f}\nMax = {total_scores.max():.0f}'
-    ax4.text(0.02, 0.98, stats_text, transform=ax4.transAxes, fontsize=10,
-             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    ax4.set_xlabel('Total Score', fontsize=12, fontweight='bold')
+    ax4.set_ylabel('Frequency', fontsize=12, fontweight='bold')
+    ax4.legend(loc='upper right')
+    ax4.grid(axis='y', alpha=0.3)
     
     plt.tight_layout()
     st.pyplot(fig4)
     plt.close(fig4)
     
     # ----------------------------------------------------------------------
-    # FIGURE 5: DIFFICULTY VS DISCRIMINATION SCATTER PLOT (FULLY FIXED)
+    # FIGURE 5: DIFFICULTY VS DISCRIMINATION (PLOTLY - FIXED)
     # ----------------------------------------------------------------------
-    st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 5. Item Diagnostic Map</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Scatter plot mapping each item's difficulty (p) against discrimination (d). Color indicates recommended action: Green (Retain), Orange (Revise), Red (Reject). All items are guaranteed to appear.</i></p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 5. Item Diagnostic Map: Difficulty (p) vs Discrimination (d)</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #7f8c8d;'><i>Setiap titik adalah item. Warna = Rekomendasi Tindakan. Hover untuk detail.</i></p>", unsafe_allow_html=True)
     
-    # Define colors and labels
-    decision_colors = {'RETAIN': '#2ecc71', 'REVISE': '#f39c12', 'REJECT': '#e74c3c'}
-    decision_labels = {'RETAIN': 'RETAIN (Pertahankan)', 'REVISE': 'REVISE (Revisi)', 'REJECT': 'REJECT (Tolak)'}
+    # Prepare data for Plotly - VERIFY ALL DATA IS INCLUDED
+    decision_colors_map = {'RETAIN': '#27ae60', 'REVISE': '#f39c12', 'REJECT': '#e74c3c'}
+    decision_labels_map = {'RETAIN': 'RETAIN (Pertahankan)', 'REVISE': 'REVISE (Revisi)', 'REJECT': 'REJECT (Tolak)'}
     
-    # Create figure with larger size
-    fig5 = plt.figure(figsize=(16, 10), facecolor='white', dpi=120)
-    ax5 = fig5.add_subplot(111)
-    ax5.set_facecolor('#f8f9fa')
+    # Create a clean dataframe for plotting
+    plot_df = df_res[['Item', 'p', 'd', 'DECISION']].copy()
+    plot_df['Color'] = plot_df['DECISION'].map(decision_colors_map)
+    plot_df['Label'] = plot_df['DECISION'].map(decision_labels_map)
+    plot_df['Tooltip'] = plot_df.apply(lambda x: f"<b>Item {x['Item']}</b><br>p (Difficulty): {x['p']:.4f}<br>d (Discrimination): {x['d']:.4f}<br>Decision: {decision_labels_map[x['DECISION']]}", axis=1)
     
-    # Plot each decision group separately for better legend control
+    # DEBUG: Print to console for verification
+    st.caption(f"**Data yang akan ditampilkan:** {len(plot_df)} items")
+    
+    # Create Plotly figure
+    fig5 = go.Figure()
+    
+    # Add scatter traces for each decision group
     for decision in ['RETAIN', 'REVISE', 'REJECT']:
-        subset = df_res[df_res['DECISION'] == decision]
+        subset = plot_df[plot_df['DECISION'] == decision]
         if len(subset) > 0:
-            ax5.scatter(subset['p'], subset['d'], 
-                       s=350,  # Much larger markers
-                       c=decision_colors[decision],
-                       edgecolors='black', 
-                       linewidth=1.5,
-                       alpha=0.85,
-                       zorder=3,
-                       label=decision_labels[decision])
+            fig5.add_trace(go.Scatter(
+                x=subset['p'],
+                y=subset['d'],
+                mode='markers+text',
+                name=decision_labels_map[decision],
+                marker=dict(
+                    size=20,
+                    color=decision_colors_map[decision],
+                    line=dict(width=2, color='white'),
+                    symbol='circle'
+                ),
+                text=subset['Item'],
+                textposition='middle center',
+                textfont=dict(size=10, color='white', family='Arial Black'),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=subset['Tooltip']
+            ))
     
-    # Add item labels with white background for readability
-    for i, row in df_res.iterrows():
-        item = row['Item']
-        p_val = row['p']
-        d_val = row['d']
-        
-        # Smart label positioning
-        offset_x = 0
-        offset_y = 0
-        
-        if p_val > 0.85:
-            offset_x = -0.04
-        elif p_val < 0.15:
-            offset_x = 0.04
-            
-        if d_val > 0.85:
-            offset_y = -0.04
-        elif d_val < 0.15:
-            offset_y = 0.04
-            
-        if 0.3 < p_val < 0.7 and 0.3 < d_val < 0.7:
-            offset_x = 0.03
-            offset_y = 0.03
-        
-        ax5.annotate(item, (p_val, d_val),
-                    xytext=(offset_x, offset_y),
-                    textcoords='offset points',
-                    ha='center',
-                    va='center',
-                    fontsize=11,
-                    fontweight='bold',
-                    bbox=dict(boxstyle='round,pad=0.4', 
-                             facecolor='white', 
-                             edgecolor='#333333',
-                             alpha=0.9,
-                             linewidth=1))
+    # Add threshold lines
+    fig5.add_hline(y=0.40, line_dash="dash", line_color="#2ecc71", line_width=2, 
+                   annotation_text="Excellent (d ≥ 0.40)", annotation_position="top right")
+    fig5.add_hline(y=0.30, line_dash="dash", line_color="#3498db", line_width=2,
+                   annotation_text="Good (d ≥ 0.30)", annotation_position="right")
+    fig5.add_hline(y=0.20, line_dash="dash", line_color="#f1c40f", line_width=2,
+                   annotation_text="Fair (d ≥ 0.20)", annotation_position="bottom right")
+    fig5.add_vline(x=0.70, line_dash="dot", line_color="#27ae60", line_width=2,
+                   annotation_text="Easy (p > 0.70)", annotation_position="top")
+    fig5.add_vline(x=0.30, line_dash="dot", line_color="#e74c3c", line_width=2,
+                   annotation_text="Difficult (p < 0.30)", annotation_position="bottom")
     
-    # Add threshold lines with better visibility
-    ax5.axhline(y=0.40, color='#2ecc71', linestyle='--', alpha=0.9, linewidth=2.5, label='Excellent (d ≥ 0.40)')
-    ax5.axhline(y=0.30, color='#3498db', linestyle='--', alpha=0.9, linewidth=2, label='Good (d ≥ 0.30)')
-    ax5.axhline(y=0.20, color='#f1c40f', linestyle='--', alpha=0.9, linewidth=2, label='Fair (d ≥ 0.20)')
-    ax5.axvline(x=0.70, color='#27ae60', linestyle=':', alpha=0.9, linewidth=2.5, label='Easy (p > 0.70)')
-    ax5.axvline(x=0.30, color='#e74c3c', linestyle=':', alpha=0.9, linewidth=2.5, label='Difficult (p < 0.30)')
+    # Add shaded zones
+    fig5.add_hrect(y0=0.40, y1=1.05, line_width=0, fillcolor="#2ecc71", opacity=0.08)
+    fig5.add_hrect(y0=0.30, y1=0.40, line_width=0, fillcolor="#3498db", opacity=0.08)
+    fig5.add_hrect(y0=0.20, y1=0.30, line_width=0, fillcolor="#f1c40f", opacity=0.08)
+    fig5.add_vrect(x0=0.70, x1=1.05, line_width=0, fillcolor="#27ae60", opacity=0.06)
+    fig5.add_vrect(x0=-0.05, x1=0.30, line_width=0, fillcolor="#e74c3c", opacity=0.06)
     
-    # Add shaded background zones with low opacity
-    ax5.axhspan(0.40, 1.02, alpha=0.08, color='#2ecc71', zorder=0)
-    ax5.axhspan(0.30, 0.40, alpha=0.08, color='#3498db', zorder=0)
-    ax5.axhspan(0.20, 0.30, alpha=0.08, color='#f1c40f', zorder=0)
-    ax5.axvspan(0.70, 1.02, alpha=0.06, color='#27ae60', zorder=0)
-    ax5.axvspan(-0.02, 0.30, alpha=0.06, color='#e74c3c', zorder=0)
+    # Calculate dynamic range based on ACTUAL data
+    p_min, p_max = plot_df['p'].min(), plot_df['p'].max()
+    d_min, d_max = plot_df['d'].min(), plot_df['d'].max()
     
-    # Labels and title
-    ax5.set_xlabel('Difficulty Index (p) → Easier', fontsize=14, fontweight='bold', fontfamily='sans-serif')
-    ax5.set_ylabel('Discrimination Index (d) → Better', fontsize=14, fontweight='bold', fontfamily='sans-serif')
-    ax5.set_title('Item Diagnostic Map: Difficulty (p) vs Discrimination (d)', 
-                 fontsize=16, fontweight='bold', fontfamily='sans-serif', pad=20)
+    x_range = [max(0, p_min - 0.05), min(1, p_max + 0.05)]
+    y_range = [max(0, d_min - 0.05), min(1, d_max + 0.05)]
     
-    # Set axis ranges to ensure ALL data points are visible
-    p_min, p_max = df_res['p'].min(), df_res['p'].max()
-    d_min, d_max = df_res['d'].min(), df_res['d'].max()
+    fig5.update_layout(
+        title=dict(
+            text='<b>Item Diagnostic Map: Difficulty (p) vs Discrimination (d)</b>',
+            font=dict(size=16, family='Arial Black', color='#2c3e50'),
+            x=0.5
+        ),
+        xaxis=dict(
+            title='<b>Difficulty Index (p)</b> → Easier',
+            range=x_range,
+            tickformat='.2f',
+            gridcolor='lightgray',
+            showgrid=True
+        ),
+        yaxis=dict(
+            title='<b>Discrimination Index (d)</b> → Better',
+            range=y_range,
+            tickformat='.2f',
+            gridcolor='lightgray',
+            showgrid=True
+        ),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        hoverlabel=dict(bgcolor='white', font_size=12),
+        height=600,
+        margin=dict(t=80, l=60, r=60, b=60)
+    )
     
-    x_margin = max(0.05, (p_max - p_min) * 0.1)
-    y_margin = max(0.05, (d_max - d_min) * 0.1)
+    # Add zone annotations
+    fig5.add_annotation(x=0.88, y=0.94, text="★ IDEAL ZONE ★", showarrow=False,
+                       font=dict(size=11, color='#27ae60', family='Arial Black'),
+                       bgcolor='white', bordercolor='#27ae60', borderwidth=1, borderpad=4)
+    fig5.add_annotation(x=0.12, y=0.94, text="Too Hard<br>Good Disc.", showarrow=False,
+                       font=dict(size=10, color='#3498db'), bgcolor='white', bordercolor='#3498db', borderwidth=1, borderpad=4)
+    fig5.add_annotation(x=0.88, y=0.08, text="Too Easy<br>Poor Disc.", showarrow=False,
+                       font=dict(size=10, color='#e67e22'), bgcolor='white', bordercolor='#e67e22', borderwidth=1, borderpad=4)
+    fig5.add_annotation(x=0.12, y=0.08, text="Poor Quality<br>REJECT", showarrow=False,
+                       font=dict(size=10, color='#e74c3c', weight='bold'), bgcolor='white', bordercolor='#e74c3c', borderwidth=1, borderpad=4)
     
-    ax5.set_xlim(max(-0.02, p_min - x_margin), min(1.02, p_max + x_margin))
-    ax5.set_ylim(max(-0.02, d_min - y_margin), min(1.02, d_max + y_margin))
+    st.plotly_chart(fig5, use_container_width=True)
     
-    # Ensure 0-1 range is visible if data is within
-    if p_min > 0:
-        ax5.set_xlim(left=0)
-    if p_max < 1:
-        ax5.set_xlim(right=1)
-    if d_min > 0:
-        ax5.set_ylim(bottom=0)
-    if d_max < 1:
-        ax5.set_ylim(top=1)
+    # Display data table for verification
+    with st.expander("📋 Lihat Data yang Ditampilkan di Figure 5"):
+        st.dataframe(plot_df[['Item', 'p', 'd', 'DECISION']].style.format({'p': '{:.4f}', 'd': '{:.4f}'}), use_container_width=True)
     
-    ax5.set_xticks(np.arange(0, 1.1, 0.1))
-    ax5.set_yticks(np.arange(0, 1.1, 0.1))
-    ax5.set_xticklabels([f'{x:.1f}' for x in np.arange(0, 1.1, 0.1)], fontsize=10)
-    ax5.set_yticklabels([f'{x:.1f}' for x in np.arange(0, 1.1, 0.1)], fontsize=10)
-    
-    # Grid styling
-    ax5.grid(True, alpha=0.25, linestyle='-', linewidth=0.5, zorder=1, color='#95a5a6')
-    
-    # Create two legends (one for decisions, one for thresholds)
-    legend1 = ax5.legend(loc='upper left', fontsize=10, framealpha=0.95, 
-                         fancybox=True, shadow=True, title='RECOMMENDED ACTION', 
-                         title_fontsize=11)
-    
-    # Get threshold lines for second legend
-    threshold_lines = [mpatches.Patch(color='#2ecc71', linestyle='--', label='Excellent (d ≥ 0.40)'),
-                       mpatches.Patch(color='#3498db', linestyle='--', label='Good (d ≥ 0.30)'),
-                       mpatches.Patch(color='#f1c40f', linestyle='--', label='Fair (d ≥ 0.20)'),
-                       mpatches.Patch(color='#27ae60', linestyle=':', label='Easy (p > 0.70)'),
-                       mpatches.Patch(color='#e74c3c', linestyle=':', label='Difficult (p < 0.30)')]
-    
-    legend2 = ax5.legend(handles=threshold_lines, loc='lower right', fontsize=9, 
-                         framealpha=0.95, fancybox=True, shadow=True, title='THRESHOLDS', 
-                         title_fontsize=10)
-    
-    ax5.add_artist(legend1)
-    
-    # Zone annotations with better readability
-    annotation_props = dict(boxstyle='round,pad=0.4', facecolor='white', 
-                           edgecolor='#333333', alpha=0.9, linewidth=1)
-    
-    # Ideal zone annotation
-    ax5.text(0.88, 0.94, '★ IDEAL ZONE ★', transform=ax5.transData, fontsize=11,
-            verticalalignment='top', bbox=annotation_props, fontweight='bold', 
-            color='#27ae60', ha='center')
-    
-    # Top-left zone (hard but good discrimination)
-    ax5.text(0.12, 0.94, 'Too Hard\nGood Disc.', transform=ax5.transData, fontsize=10,
-            verticalalignment='top', bbox=annotation_props, ha='center', color='#3498db')
-    
-    # Bottom-right zone (easy but poor discrimination)
-    ax5.text(0.88, 0.08, 'Too Easy\nPoor Disc.', transform=ax5.transData, fontsize=10,
-            verticalalignment='bottom', bbox=annotation_props, ha='center', color='#e67e22')
-    
-    # Bottom-left zone (poor quality)
-    ax5.text(0.12, 0.08, 'Poor Quality\nREJECT', transform=ax5.transData, fontsize=10,
-            verticalalignment='bottom', bbox=annotation_props, ha='center', 
-            color='#e74c3c', fontweight='bold')
-    
-    plt.tight_layout()
-    st.pyplot(fig5)
-    plt.close(fig5)
-    
-    # Add summary statistics for the scatter plot
-    with st.expander("📊 Summary Statistics for Item Diagnostic Map"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Items", len(df_res))
-            st.metric("RETAIN", f"{len(df_res[df_res['DECISION'] == 'RETAIN'])} items")
-        with col2:
-            st.metric("Mean Difficulty (p)", f"{df_res['p'].mean():.3f}")
-            st.metric("REVISE", f"{len(df_res[df_res['DECISION'] == 'REVISE'])} items")
-        with col3:
-            st.metric("Mean Discrimination (d)", f"{df_res['d'].mean():.3f}")
-            st.metric("REJECT", f"{len(df_res[df_res['DECISION'] == 'REJECT'])} items")
-    
-    st.markdown("---")
-    st.markdown("<p style='text-align: center; color: #7f8c8d; font-size: 12px;'>Visualization generated using Classical Test Theory (CTT) framework. For publication, figures can be exported as high-resolution images.</p>", unsafe_allow_html=True)
     st.markdown("---")
     
     # ======================================================================
@@ -538,19 +439,15 @@ if student_file and key_file:
     else:
         st.success("**Perfect Functionality:** No negative DDI detected. All distractors are successfully drawing more students from the lower group than the upper group.")
 
-    # --- DESCRIPTIVE INTERPRETATION (WEB) ---
     st.subheader("📝 Descriptive Interpretation")
     rel_eval = "Excellent" if kr20 >= 0.9 else "High" if kr20 >= 0.8 else "Acceptable" if kr20 >= 0.7 else "Low"
     
     col_int1, col_int2 = st.columns(2)
     with col_int1:
-        st.info(f"**Test Reliability:** The KR-20 coefficient of {kr20:.4f} indicates **{rel_eval}** internal consistency. "
-                f"This suggests that the instrument is {'highly stable' if kr20 >= 0.8 else 'sufficient'} for measuring the intended academic constructs.")
+        st.info(f"**Test Reliability:** The KR-20 coefficient of {kr20:.4f} indicates **{rel_eval}** internal consistency.")
     with col_int2:
-        st.warning(f"**Measurement Error:** The SEM of {sem:.4f} indicates that a student's observed score may fluctuate within this range "
-                   f"relative to their theoretical true score. A lower SEM reflects higher precision in score estimation.")
+        st.warning(f"**Measurement Error:** The SEM of {sem:.4f} indicates measurement precision.")
 
-    # --- ITEM MATRIX ---
     st.subheader("📋 Comprehensive Item Statistics Matrix")
     def apply_item_styling(row):
         styles = [''] * len(row)
@@ -571,10 +468,8 @@ if student_file and key_file:
 
     st.dataframe(df_res.style.apply(apply_item_styling, axis=1).format("{:.4f}", subset=["p", "q", "pq", "Var", "d", "Best_DDI", "Worst_DDI", "r_pbis"]), use_container_width=True)
 
-    # --- RANKING TABLE ---
     st.subheader("🏆 Student Score Ranking & Grouping")
     def apply_rank_styling(row):
-        style = [''] * len(row)
         if row['Group'] == 'Upper': bg_color = '#d4edda'
         elif row['Group'] == 'Lower': bg_color = '#f8d7da'
         else: bg_color = 'white'
@@ -582,7 +477,6 @@ if student_file and key_file:
 
     st.dataframe(df_ranking.style.apply(apply_rank_styling, axis=1), use_container_width=True)
 
-    # --- DISTRACTORS ---
     st.divider()
     st.subheader("🎯 Distractor Effectiveness")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
@@ -604,41 +498,14 @@ if student_file and key_file:
         df_dist_final.to_excel(writer, index=True, sheet_name='Distractor_Analysis')
         
         reliability_interpretation = pd.DataFrame({
-            "Metric": [
-                "Students (N)", 
-                "Items (k)", 
-                "Mean Score", 
-                "Std. Deviation", 
-                "KR-20", 
-                "Alpha", 
-                "SEM",
-                "KR-20 Interpretation",
-                "SEM Interpretation"
-            ],
-            "Value": [
-                n_students, 
-                n_items, 
-                f"{mean_score:.2f}", 
-                f"{std_score:.2f}", 
-                f"{kr20:.4f}", 
-                f"{alpha:.4f}", 
-                f"{sem:.4f}",
-                f"{rel_eval} reliability",
-                f"±{sem:.4f} margin of error"
-            ],
+            "Metric": ["Students (N)", "Items (k)", "Mean Score", "Std. Deviation", "KR-20", "Alpha", "SEM"],
+            "Value": [n_students, n_items, f"{mean_score:.2f}", f"{std_score:.2f}", f"{kr20:.4f}", f"{alpha:.4f}", f"{sem:.4f}"],
             "Interpretation": [
-                "Total number of test takers",
-                "Total number of items in the test",
-                "Average raw score across all students",
-                "Spread of scores around the mean",
-                f"Internal consistency: {rel_eval}. {'Excellent (>0.90)' if kr20 >= 0.9 else 'High (>0.80)' if kr20 >= 0.8 else 'Acceptable (>0.70)' if kr20 >= 0.7 else 'Low (<0.70)'}",
-                "Alternative reliability coefficient (parallel to KR-20)",
-                "Standard error of measurement. Lower values = higher precision",
-                f"The instrument shows {rel_eval} reliability. High values (>0.70) indicate consistency in measurement.",
-                f"The SEM of {sem:.4f} indicates that a student's observed score may fluctuate within this range relative to their theoretical true score."
+                "Total number of test takers", "Total number of items", "Average raw score",
+                "Spread of scores", f"Internal consistency: {rel_eval}",
+                "Alternative reliability coefficient", "Standard error of measurement"
             ]
         })
-        
         reliability_interpretation.to_excel(writer, index=False, sheet_name='Reliability_Interpretation')
             
     st.download_button(label="📥 Download Full Report", data=buf.getvalue(), file_name="Complete_Item_Analysis_Report.xlsx")
