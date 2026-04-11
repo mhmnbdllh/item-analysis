@@ -6,8 +6,6 @@ import io
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.patches as mpatches
-import plotly.graph_objects as go
-import plotly.express as px
 
 # ======================================================================
 # ACADEMIC ITEM ANALYSIS - RIGOROUS ENGLISH VERSION (2026)
@@ -355,130 +353,174 @@ if student_file and key_file:
     plt.close(fig4)
     
     # ----------------------------------------------------------------------
-    # FIGURE 5: DIFFICULTY VS DISCRIMINATION SCATTER PLOT (USING PLOTLY - MORE RELIABLE)
+    # FIGURE 5: DIFFICULTY VS DISCRIMINATION SCATTER PLOT (FULLY FIXED)
     # ----------------------------------------------------------------------
     st.markdown("<h3 style='color: #2c3e50; margin-top: 40px;'>📍 Figure 5. Item Diagnostic Map</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Scatter plot mapping each item's difficulty (p) against discrimination (d). Color indicates recommended action: Green (Retain), Orange (Revise), Red (Reject). Hover over points for details.</i></p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #7f8c8d; margin-bottom: 20px;'><i>Scatter plot mapping each item's difficulty (p) against discrimination (d). Color indicates recommended action: Green (Retain), Orange (Revise), Red (Reject). All items are guaranteed to appear.</i></p>", unsafe_allow_html=True)
     
-    # Prepare data for Plotly
-    decision_colors_plotly = {'RETAIN': '#27ae60', 'REVISE': '#f39c12', 'REJECT': '#c0392b'}
-    decision_labels_plotly = {'RETAIN': 'RETAIN (Pertahankan)', 'REVISE': 'REVISE (Revisi)', 'REJECT': 'REJECT (Tolak)'}
+    # Define colors and labels
+    decision_colors = {'RETAIN': '#2ecc71', 'REVISE': '#f39c12', 'REJECT': '#e74c3c'}
+    decision_labels = {'RETAIN': 'RETAIN (Pertahankan)', 'REVISE': 'REVISE (Revisi)', 'REJECT': 'REJECT (Tolak)'}
     
-    df_plotly = df_res.copy()
-    df_plotly['Decision_Label'] = df_plotly['DECISION'].map(decision_labels_plotly)
-    df_plotly['Decision_Color'] = df_plotly['DECISION'].map(decision_colors_plotly)
-    df_plotly['Tooltip'] = df_plotly.apply(lambda x: f"<b>Item {x['Item']}</b><br>p (Difficulty): {x['p']:.3f}<br>d (Discrimination): {x['d']:.3f}<br>r_pbis: {x['r_pbis']:.3f}<br>Decision: {decision_labels_plotly[x['DECISION']]}", axis=1)
+    # Create figure with larger size
+    fig5 = plt.figure(figsize=(16, 10), facecolor='white', dpi=120)
+    ax5 = fig5.add_subplot(111)
+    ax5.set_facecolor('#f8f9fa')
     
-    # Create Plotly figure
-    fig5 = go.Figure()
+    # Plot each decision group separately for better legend control
+    for decision in ['RETAIN', 'REVISE', 'REJECT']:
+        subset = df_res[df_res['DECISION'] == decision]
+        if len(subset) > 0:
+            ax5.scatter(subset['p'], subset['d'], 
+                       s=350,  # Much larger markers
+                       c=decision_colors[decision],
+                       edgecolors='black', 
+                       linewidth=1.5,
+                       alpha=0.85,
+                       zorder=3,
+                       label=decision_labels[decision])
     
-    # Add scatter points
-    fig5.add_trace(go.Scatter(
-        x=df_plotly['p'],
-        y=df_plotly['d'],
-        mode='markers+text',
-        marker=dict(
-            size=18,
-            color=df_plotly['Decision_Color'],
-            line=dict(width=2, color='white'),
-            symbol='circle'
-        ),
-        text=df_plotly['Item'],
-        textposition='middle center',
-        textfont=dict(size=11, color='white', family='Arial Black'),
-        hovertemplate='%{customdata}<extra></extra>',
-        customdata=df_plotly['Tooltip'],
-        name='Items'
-    ))
+    # Add item labels with white background for readability
+    for i, row in df_res.iterrows():
+        item = row['Item']
+        p_val = row['p']
+        d_val = row['d']
+        
+        # Smart label positioning
+        offset_x = 0
+        offset_y = 0
+        
+        if p_val > 0.85:
+            offset_x = -0.04
+        elif p_val < 0.15:
+            offset_x = 0.04
+            
+        if d_val > 0.85:
+            offset_y = -0.04
+        elif d_val < 0.15:
+            offset_y = 0.04
+            
+        if 0.3 < p_val < 0.7 and 0.3 < d_val < 0.7:
+            offset_x = 0.03
+            offset_y = 0.03
+        
+        ax5.annotate(item, (p_val, d_val),
+                    xytext=(offset_x, offset_y),
+                    textcoords='offset points',
+                    ha='center',
+                    va='center',
+                    fontsize=11,
+                    fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.4', 
+                             facecolor='white', 
+                             edgecolor='#333333',
+                             alpha=0.9,
+                             linewidth=1))
     
-    # Add threshold lines
-    fig5.add_hline(y=0.40, line_dash="dash", line_color="#2ecc71", opacity=0.8, 
-                   annotation_text="Excellent (d ≥ 0.40)", annotation_position="top right")
-    fig5.add_hline(y=0.30, line_dash="dash", line_color="#3498db", opacity=0.8,
-                   annotation_text="Good (d ≥ 0.30)", annotation_position="right")
-    fig5.add_hline(y=0.20, line_dash="dash", line_color="#f1c40f", opacity=0.8,
-                   annotation_text="Fair (d ≥ 0.20)", annotation_position="bottom right")
-    fig5.add_vline(x=0.70, line_dash="dot", line_color="#27ae60", opacity=0.8,
-                   annotation_text="Easy (p > 0.70)", annotation_position="top")
-    fig5.add_vline(x=0.30, line_dash="dot", line_color="#e74c3c", opacity=0.8,
-                   annotation_text="Difficult (p < 0.30)", annotation_position="bottom")
+    # Add threshold lines with better visibility
+    ax5.axhline(y=0.40, color='#2ecc71', linestyle='--', alpha=0.9, linewidth=2.5, label='Excellent (d ≥ 0.40)')
+    ax5.axhline(y=0.30, color='#3498db', linestyle='--', alpha=0.9, linewidth=2, label='Good (d ≥ 0.30)')
+    ax5.axhline(y=0.20, color='#f1c40f', linestyle='--', alpha=0.9, linewidth=2, label='Fair (d ≥ 0.20)')
+    ax5.axvline(x=0.70, color='#27ae60', linestyle=':', alpha=0.9, linewidth=2.5, label='Easy (p > 0.70)')
+    ax5.axvline(x=0.30, color='#e74c3c', linestyle=':', alpha=0.9, linewidth=2.5, label='Difficult (p < 0.30)')
     
-    # Add shaded background zones
-    fig5.add_hrect(y0=0.40, y1=1.05, line_width=0, fillcolor="#2ecc71", opacity=0.08)
-    fig5.add_hrect(y0=0.30, y1=0.40, line_width=0, fillcolor="#3498db", opacity=0.08)
-    fig5.add_hrect(y0=0.20, y1=0.30, line_width=0, fillcolor="#f1c40f", opacity=0.08)
-    fig5.add_vrect(x0=0.70, x1=1.05, line_width=0, fillcolor="#27ae60", opacity=0.06)
-    fig5.add_vrect(x0=-0.05, x1=0.30, line_width=0, fillcolor="#e74c3c", opacity=0.06)
+    # Add shaded background zones with low opacity
+    ax5.axhspan(0.40, 1.02, alpha=0.08, color='#2ecc71', zorder=0)
+    ax5.axhspan(0.30, 0.40, alpha=0.08, color='#3498db', zorder=0)
+    ax5.axhspan(0.20, 0.30, alpha=0.08, color='#f1c40f', zorder=0)
+    ax5.axvspan(0.70, 1.02, alpha=0.06, color='#27ae60', zorder=0)
+    ax5.axvspan(-0.02, 0.30, alpha=0.06, color='#e74c3c', zorder=0)
     
-    # Update layout
-    fig5.update_layout(
-        title=dict(
-            text='<b>Item Diagnostic Map: Difficulty (p) vs Discrimination (d)</b>',
-            font=dict(size=18, family='Arial Black', color='#2c3e50'),
-            x=0.5,
-            xanchor='center'
-        ),
-        xaxis=dict(
-            title='<b>Difficulty Index (p)</b> → Easier',
-            range=[-0.05, 1.05],
-            tickformat='.2f',
-            tickfont=dict(size=12),
-            title_font=dict(size=14, family='Arial Black'),
-            gridcolor='lightgray',
-            gridwidth=0.5,
-            showgrid=True,
-            zeroline=False
-        ),
-        yaxis=dict(
-            title='<b>Discrimination Index (d)</b> → Better',
-            range=[-0.05, 1.05],
-            tickfont=dict(size=12),
-            title_font=dict(size=14, family='Arial Black'),
-            gridcolor='lightgray',
-            gridwidth=0.5,
-            showgrid=True,
-            zeroline=False
-        ),
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        hoverlabel=dict(bgcolor='white', font_size=12, font_family='Arial'),
-        height=650,
-        width=1000,
-        margin=dict(t=80, l=80, r=80, b=80),
-        legend=dict(
-            title='<b>Recommended Action</b>',
-            orientation='h',
-            yanchor='bottom',
-            y=1.02,
-            xanchor='center',
-            x=0.5,
-            font=dict(size=12)
-        )
-    )
+    # Labels and title
+    ax5.set_xlabel('Difficulty Index (p) → Easier', fontsize=14, fontweight='bold', fontfamily='sans-serif')
+    ax5.set_ylabel('Discrimination Index (d) → Better', fontsize=14, fontweight='bold', fontfamily='sans-serif')
+    ax5.set_title('Item Diagnostic Map: Difficulty (p) vs Discrimination (d)', 
+                 fontsize=16, fontweight='bold', fontfamily='sans-serif', pad=20)
     
-    # Add zone annotations
-    fig5.add_annotation(
-        x=0.88, y=0.92, text="★ IDEAL ZONE ★",
-        showarrow=False, font=dict(size=11, color='#27ae60', family='Arial Black'),
-        bgcolor='white', bordercolor='#27ae60', borderwidth=1, borderpad=4
-    )
-    fig5.add_annotation(
-        x=0.10, y=0.92, text="Too Hard<br>Good Disc.",
-        showarrow=False, font=dict(size=10, color='#3498db'),
-        bgcolor='white', bordercolor='#3498db', borderwidth=1, borderpad=4
-    )
-    fig5.add_annotation(
-        x=0.88, y=0.10, text="Too Easy<br>Poor Disc.",
-        showarrow=False, font=dict(size=10, color='#f39c12'),
-        bgcolor='white', bordercolor='#f39c12', borderwidth=1, borderpad=4
-    )
-    fig5.add_annotation(
-        x=0.10, y=0.10, text="Poor Quality<br>REJECT",
-        showarrow=False, font=dict(size=10, color='#c0392b', weight='bold'),
-        bgcolor='white', bordercolor='#c0392b', borderwidth=1, borderpad=4
-    )
+    # Set axis ranges to ensure ALL data points are visible
+    p_min, p_max = df_res['p'].min(), df_res['p'].max()
+    d_min, d_max = df_res['d'].min(), df_res['d'].max()
     
-    st.plotly_chart(fig5, use_container_width=True)
+    x_margin = max(0.05, (p_max - p_min) * 0.1)
+    y_margin = max(0.05, (d_max - d_min) * 0.1)
+    
+    ax5.set_xlim(max(-0.02, p_min - x_margin), min(1.02, p_max + x_margin))
+    ax5.set_ylim(max(-0.02, d_min - y_margin), min(1.02, d_max + y_margin))
+    
+    # Ensure 0-1 range is visible if data is within
+    if p_min > 0:
+        ax5.set_xlim(left=0)
+    if p_max < 1:
+        ax5.set_xlim(right=1)
+    if d_min > 0:
+        ax5.set_ylim(bottom=0)
+    if d_max < 1:
+        ax5.set_ylim(top=1)
+    
+    ax5.set_xticks(np.arange(0, 1.1, 0.1))
+    ax5.set_yticks(np.arange(0, 1.1, 0.1))
+    ax5.set_xticklabels([f'{x:.1f}' for x in np.arange(0, 1.1, 0.1)], fontsize=10)
+    ax5.set_yticklabels([f'{x:.1f}' for x in np.arange(0, 1.1, 0.1)], fontsize=10)
+    
+    # Grid styling
+    ax5.grid(True, alpha=0.25, linestyle='-', linewidth=0.5, zorder=1, color='#95a5a6')
+    
+    # Create two legends (one for decisions, one for thresholds)
+    legend1 = ax5.legend(loc='upper left', fontsize=10, framealpha=0.95, 
+                         fancybox=True, shadow=True, title='RECOMMENDED ACTION', 
+                         title_fontsize=11)
+    
+    # Get threshold lines for second legend
+    threshold_lines = [mpatches.Patch(color='#2ecc71', linestyle='--', label='Excellent (d ≥ 0.40)'),
+                       mpatches.Patch(color='#3498db', linestyle='--', label='Good (d ≥ 0.30)'),
+                       mpatches.Patch(color='#f1c40f', linestyle='--', label='Fair (d ≥ 0.20)'),
+                       mpatches.Patch(color='#27ae60', linestyle=':', label='Easy (p > 0.70)'),
+                       mpatches.Patch(color='#e74c3c', linestyle=':', label='Difficult (p < 0.30)')]
+    
+    legend2 = ax5.legend(handles=threshold_lines, loc='lower right', fontsize=9, 
+                         framealpha=0.95, fancybox=True, shadow=True, title='THRESHOLDS', 
+                         title_fontsize=10)
+    
+    ax5.add_artist(legend1)
+    
+    # Zone annotations with better readability
+    annotation_props = dict(boxstyle='round,pad=0.4', facecolor='white', 
+                           edgecolor='#333333', alpha=0.9, linewidth=1)
+    
+    # Ideal zone annotation
+    ax5.text(0.88, 0.94, '★ IDEAL ZONE ★', transform=ax5.transData, fontsize=11,
+            verticalalignment='top', bbox=annotation_props, fontweight='bold', 
+            color='#27ae60', ha='center')
+    
+    # Top-left zone (hard but good discrimination)
+    ax5.text(0.12, 0.94, 'Too Hard\nGood Disc.', transform=ax5.transData, fontsize=10,
+            verticalalignment='top', bbox=annotation_props, ha='center', color='#3498db')
+    
+    # Bottom-right zone (easy but poor discrimination)
+    ax5.text(0.88, 0.08, 'Too Easy\nPoor Disc.', transform=ax5.transData, fontsize=10,
+            verticalalignment='bottom', bbox=annotation_props, ha='center', color='#e67e22')
+    
+    # Bottom-left zone (poor quality)
+    ax5.text(0.12, 0.08, 'Poor Quality\nREJECT', transform=ax5.transData, fontsize=10,
+            verticalalignment='bottom', bbox=annotation_props, ha='center', 
+            color='#e74c3c', fontweight='bold')
+    
+    plt.tight_layout()
+    st.pyplot(fig5)
+    plt.close(fig5)
+    
+    # Add summary statistics for the scatter plot
+    with st.expander("📊 Summary Statistics for Item Diagnostic Map"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Items", len(df_res))
+            st.metric("RETAIN", f"{len(df_res[df_res['DECISION'] == 'RETAIN'])} items")
+        with col2:
+            st.metric("Mean Difficulty (p)", f"{df_res['p'].mean():.3f}")
+            st.metric("REVISE", f"{len(df_res[df_res['DECISION'] == 'REVISE'])} items")
+        with col3:
+            st.metric("Mean Discrimination (d)", f"{df_res['d'].mean():.3f}")
+            st.metric("REJECT", f"{len(df_res[df_res['DECISION'] == 'REJECT'])} items")
     
     st.markdown("---")
     st.markdown("<p style='text-align: center; color: #7f8c8d; font-size: 12px;'>Visualization generated using Classical Test Theory (CTT) framework. For publication, figures can be exported as high-resolution images.</p>", unsafe_allow_html=True)
