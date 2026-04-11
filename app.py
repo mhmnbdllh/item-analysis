@@ -235,49 +235,18 @@ if student_file and key_file:
     st.dataframe(df_ranking.style.apply(apply_rank_styling, axis=1), use_container_width=True)
 
     # --- DISTRACTORS ---
-        # --- DISTRACTORS ---
     st.divider()
     st.subheader("🎯 Distractor Effectiveness")
     dist_data = [df[item].astype(str).str.upper().str.strip().value_counts(normalize=True).to_dict() | {"Item": item} for item in item_cols]
     df_dist = pd.DataFrame(dist_data).set_index('Item').fillna(0)
     cols = sorted([c for c in df_dist.columns if len(str(c)) == 1]) + sorted([c for c in df_dist.columns if len(str(c)) > 1])
+    df_dist_final = df_dist[cols].copy()
+    for col in cols: df_dist_final[col] = df_dist_final[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
     
-    # Buat dataframe numerik untuk styling
-    df_dist_numeric = df_dist[cols].copy()
+    df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
     
-    # Fungsi pewarnaan berdasarkan threshold statistik
-    def color_distractor(val):
-        if pd.isna(val):
-            return ''
-        elif val > 0.50:
-            return 'background-color: #2ecc71; color: white;'
-        elif val > 0.25:
-            return 'background-color: #f1c40f; color: black;'
-        elif val < 0.05 and val > 0:
-            return 'background-color: #e74c3c; color: white;'
-        else:
-            return ''
-    
-    # Terapkan styling ke numeric
-    styled = df_dist_numeric.style.applymap(color_distractor)
-    
-    # Format ke persen untuk tampilan
-    df_dist_display = df_dist[cols].copy()
-    for col in cols:
-        df_dist_display[col] = df_dist_display[col].apply(lambda x: f"{x:.4f} ({x:.2%})")
-    
-    # Pindahkan data yang sudah diformat ke styled
-    for col in cols:
-        styled.data[col] = df_dist_display[col]
-    
-    # Tambah kolom interpretasi
-    df_dist_display['Interpretation'] = df_dist[cols].apply(
-        lambda row: f"⚠️ Perhatikan: {', '.join([str(opt) for opt, val in row.items() if val < 0.05 and val > 0 and opt != 'N/A'])}" if any(val < 0.05 and val > 0 for val in row.values()) 
-        else "✓ Semua opsi berfungsi", axis=1
-    )
-    
-    # Tampilkan
-    st.dataframe(styled, use_container_width=True)
+    df_dist_formatted = df_dist[cols].style.format(lambda x: f"{x:.4f} ({x:.2%})").background_gradient(cmap='YlGn', axis=1)
+    st.dataframe(df_dist_formatted, use_container_width=True)
 
     # --- EXCEL DOWNLOAD ---
     buf = io.BytesIO()
