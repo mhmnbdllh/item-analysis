@@ -489,7 +489,14 @@ if student_file and key_file:
     
     df_dist_final['Interpretation'] = df_dist[cols].apply(lambda row: f"Effective: {', '.join([str(opt) for opt, val in row.items() if val >= 0.05 and opt != 'N/A'])}", axis=1)
     
-    df_dist_formatted = df_dist[cols].style.format(lambda x: f"{x:.4f} ({x:.2%})").background_gradient(cmap='YlGn')
+    def color_distractor(val):
+    if val >= 0.05:
+        return 'background-color: #2ecc71; color: white'  # Hijau jika efektif (>= 5%)
+    elif val > 0:
+        return 'background-color: #f1c40f; color: black'  # Kuning jika ada pemilih tapi < 5%
+    return ''  # Polos jika 0%
+
+    df_dist_formatted = df_dist[cols].style.format(lambda x: f"{x:.4f} ({x:.2%})").applymap(color_distractor)
     st.dataframe(df_dist_formatted, use_container_width=True)
 
     # --- EXCEL DOWNLOAD ---
