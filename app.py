@@ -56,7 +56,7 @@ div[data-testid="stExpander"] { border: 1px solid #30363d; border-radius:6px; }
 """, unsafe_allow_html=True)
 
 # ── Title ────────────────────────────────────────────────────────────────
-st.markdown("# 📊 ITEM ANALYSIS PRO")
+st.markdown("# 📊 ITEM ANALYSIS BY MUHAIMIN ABDULLAH")
 st.markdown("**Classical Test Theory (CTT) + Item Response Theory (IRT 1PL / 2PL / 3PL)** · *Methodologically Rigorous · 2026 Edition*")
 st.divider()
 
