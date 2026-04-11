@@ -37,7 +37,7 @@ h1, h2, h3 { font-family: 'IBM Plex Mono', monospace !important; }
 [data-testid="stMetricDelta"] { font-family: 'IBM Plex Mono', monospace !important; }
 
 .metric-card {
-    background: #ffffff;
+    background: background: linear-gradient(135deg, #161b22, #1c2128);
     border: 1px solid #30363d;
     border-radius: 8px;
     padding: 1rem;
