@@ -419,15 +419,15 @@ if student_file and key_file:
     # ── Load Data ────────────────────────────────────────────────────
     df = pd.read_csv(student_file)
     df = df.dropna(subset=[df.columns[0]])
-    df_key = pd.read_csv(key_file)
     df = df.fillna("N/A")
+    df_key = pd.read_csv(key_file)
 
     item_cols  = df.columns[1:]
     id_col_name = df.columns[0]
     answer_key  = df_key.iloc[0, 1:].astype(str).str.upper().str.strip().tolist()
 
     # ── Score Matrix ─────────────────────────────────────────────────
-    df_scores = pd.DataFrame()
+    df_scores = pd.DataFrame(index=df.index)
     for i, col in enumerate(item_cols):
         df_scores[col] = (df[col].astype(str).str.upper().str.strip() == answer_key[i]).astype(int)
 
