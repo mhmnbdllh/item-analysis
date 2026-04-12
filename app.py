@@ -37,7 +37,7 @@ h1, h2, h3 { font-family: 'IBM Plex Mono', monospace !important; }
 [data-testid="stMetricDelta"] { font-family: 'IBM Plex Mono', monospace !important; }
 
 .metric-card {
-    background: background: linear-gradient(135deg, #161b22, #1c2128);
+    background: linear-gradient(135deg, #161b22, #1c2128);
     border: 1px solid #30363d;
     border-radius: 8px;
     padding: 1rem;
@@ -56,7 +56,7 @@ div[data-testid="stExpander"] { border: 1px solid #30363d; border-radius:6px; }
 """, unsafe_allow_html=True)
 
 # ── Title ────────────────────────────────────────────────────────────────
-st.markdown("# 📊 ITEM ANALYSIS BY MUHAIMIN ABDULLAH")
+st.markdown("# ITEM ANALYSIS by Muhaimin Abdullah")
 st.markdown("**Classical Test Theory (CTT) + Item Response Theory (IRT 1PL / 2PL / 3PL)** · *Methodologically Rigorous · 2026 Edition*")
 st.divider()
 
