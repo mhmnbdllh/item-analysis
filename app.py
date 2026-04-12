@@ -416,18 +416,24 @@ COLORS = {
 # ══════════════════════════════════════════════════════════════════════
 
 if student_file and key_file:
-    # ── Load Data ────────────────────────────────────────────────────
-    df = pd.read_csv(student_file)
-    df = df.dropna(subset=[df.columns[0]])
+    # ── 1. Load & Hard Cleaning ──────────────────────────────────────
+    df_raw = pd.read_csv(student_file)
+    
+    # LANGKAH KRUSIAL: Hapus baris hantu
+    df = df_raw.dropna(how='all') # Hapus baris yang benar-benar kosong
+    df = df[df[df.columns[0]].astype(str).str.strip() != ""] # Hapus jika ID kosong/spasi
+    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x) # Bersihkan spasi sel
     df = df.fillna("N/A")
+    df = df.reset_index(drop=True) # Reset urutan agar tidak ada celah di tabel
+
+    # ── 2. Load Key & Setup ──────────────────────────────────────────
     df_key = pd.read_csv(key_file)
-
-    item_cols  = df.columns[1:]
+    item_cols = df.columns[1:]
     id_col_name = df.columns[0]
-    answer_key  = df_key.iloc[0, 1:].astype(str).str.upper().str.strip().tolist()
+    answer_key = df_key.iloc[0, 1:].astype(str).str.upper().str.strip().tolist()
 
-    # ── Score Matrix ─────────────────────────────────────────────────
-    df_scores = pd.DataFrame(index=df.index)
+    # ── 3. Score Matrix (Sinkron dengan Index df) ────────────────────
+    df_scores = pd.DataFrame(index=df.index) 
     for i, col in enumerate(item_cols):
         df_scores[col] = (df[col].astype(str).str.upper().str.strip() == answer_key[i]).astype(int)
 
