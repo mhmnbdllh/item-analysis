@@ -84,9 +84,9 @@ with st.sidebar:
         st.markdown("""
 | Range | Label | Symbol |
 |---|---|---|
-| p > 0.70 | Easy | 🟢 |
+| > 0.70 | Easy | 🟢 |
 | 0.30–0.70 | Moderate | 🟡 |
-| p < 0.30 | Difficult | 🔴 |
+| < 0.30 | Difficult | 🔴 |
 
 *Optimal range: 0.30–0.70 (maximises score variance and information).*
         """)
