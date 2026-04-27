@@ -441,8 +441,8 @@ if student_file and key_file:
     df_sorted.iloc[:n_group, df_sorted.columns.get_loc('Group')] = 'Upper'
     df_sorted.iloc[-n_group:, df_sorted.columns.get_loc('Group')] = 'Lower'
     df_ranking = df_sorted[[id_col_name, 'Total_Score', 'Rank', 'Group']].copy()
-    up_idx = df_sorted.iloc[:n_group].index
-    lo_idx = df_sorted.iloc[-n_group:].index
+    up_idx = df_sorted.head(n_group).index
+    lo_idx = df_sorted.tail(n_group).index
 
     # ══════════════════════════════════════════════════════════════════
     # CTT ITEM ANALYSIS
