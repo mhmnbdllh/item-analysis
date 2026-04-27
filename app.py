@@ -435,7 +435,7 @@ if student_file and key_file:
 
     # ── Grouping (Kelley's Method) ────────────────────────────────────
     n_group = int(n_students * group_percent / 100)
-    df_sorted = df.sort_values('Total_Score', ascending=False).copy()
+    df_sorted = df.sort_values('Total_Score', ascending=False).reset_index(drop=True)
     df_sorted['Rank'] = range(1, n_students + 1)
     df_sorted['Group'] = 'Middle'
     df_sorted.iloc[:n_group, df_sorted.columns.get_loc('Group')] = 'Upper'
