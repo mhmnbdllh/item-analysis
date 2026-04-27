@@ -434,15 +434,15 @@ if student_file and key_file:
     n_students, n_items = len(df), len(item_cols)
 
     # ── Grouping (Kelley's Method) ────────────────────────────────────
-    n_group = max(1, int(np.ceil(n_students * group_percent / 100)))
+    n_group = max(1, int(round(n_students * group_percent / 100)))
     df_sorted = df.sort_values('Total_Score', ascending=False).copy()
     df_sorted['Rank'] = range(1, n_students + 1)
     df_sorted['Group'] = 'Middle'
     df_sorted.iloc[:n_group, df_sorted.columns.get_loc('Group')] = 'Upper'
     df_sorted.iloc[-n_group:, df_sorted.columns.get_loc('Group')] = 'Lower'
     df_ranking = df_sorted[[id_col_name, 'Total_Score', 'Rank', 'Group']].copy()
-    up_idx = df_sorted.head(n_group).index
-    lo_idx = df_sorted.tail(n_group).index
+    up_idx = df_sorted.iloc[:n_group].index
+    lo_idx = df_sorted.iloc[-n_group:].index
 
     # ══════════════════════════════════════════════════════════════════
     # CTT ITEM ANALYSIS
