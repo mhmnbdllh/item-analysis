@@ -56,8 +56,10 @@ div[data-testid="stExpander"] { border: 1px solid #30363d; border-radius:6px; }
 
 a[href*="github.com"] { display: none !important; }
 [data-testid="stToolbar"] { display: none !important; }
+[data-testid="stToolbarActions"] { display: none !important; }
 #MainMenu { visibility: hidden !important; }
 .stDeployButton { display: none !important; }
+header[data-testid="stHeader"] { display: none !important; }
 
 """, unsafe_allow_html=True)
 
