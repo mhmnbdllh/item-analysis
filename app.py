@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 # CTT + IRT 1PL/2PL/3PL + Auto-Interpretation
 # ======================================================================
 
-st.set_page_config(page_title="Item Analysis Pro by Muhaimin Abdullah", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Item Analysis Pro by Dr. Muhaimin Abdullah, S.Pd., M.Pd.", page_icon="📊", layout="wide")
 
 # ── Custom CSS ──────────────────────────────────────────────────────────
 st.markdown("""
