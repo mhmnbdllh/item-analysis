@@ -22,9 +22,11 @@ st.set_page_config(page_title="Item Analysis Pro by Muhaimin Abdullah", page_ico
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
 html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
 .main { background-color: #0d1117; }
 h1, h2, h3 { font-family: 'IBM Plex Mono', monospace !important; }
+
 [data-testid="stMetricValue"] {
     font-family: 'IBM Plex Mono', monospace !important;
     font-size: 1.6rem !important;
@@ -33,6 +35,7 @@ h1, h2, h3 { font-family: 'IBM Plex Mono', monospace !important; }
 }
 [data-testid="stMetricLabel"] { color: #8b949e !important; font-size: 0.75rem !important; }
 [data-testid="stMetricDelta"] { font-family: 'IBM Plex Mono', monospace !important; }
+
 .metric-card {
     background: linear-gradient(135deg, #161b22, #1c2128);
     border: 1px solid #30363d;
@@ -43,15 +46,12 @@ h1, h2, h3 { font-family: 'IBM Plex Mono', monospace !important; }
 .flag-retain { background:#1a4731; color:#3fb950; border:1px solid #3fb950; border-radius:4px; padding:2px 8px; font-weight:700; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; }
 .flag-revise { background:#3d2b00; color:#d29922; border:1px solid #d29922; border-radius:4px; padding:2px 8px; font-weight:700; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; }
 .flag-reject { background:#3d1212; color:#f85149; border:1px solid #f85149; border-radius:4px; padding:2px 8px; font-weight:700; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; }
+
 div[data-testid="stExpander"] { border: 1px solid #30363d; border-radius:6px; }
 .stAlert { border-radius:6px !important; }
 .stTabs [data-baseweb="tab-list"] { gap: 8px; background: #161b22; border-radius: 8px; padding: 4px; }
 .stTabs [data-baseweb="tab"] { border-radius: 6px; color: #8b949e; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
 .stTabs [aria-selected="true"] { background:#21262d !important; color:#58a6ff !important; }
-a[href*="github.com"] { display: none !important; }
-[data-testid="stToolbar"] { display: none !important; }
-#MainMenu { visibility: hidden !important; }
-.stDeployButton { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
