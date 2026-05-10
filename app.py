@@ -53,6 +53,12 @@ div[data-testid="stExpander"] { border: 1px solid #30363d; border-radius:6px; }
 .stTabs [data-baseweb="tab"] { border-radius: 6px; color: #8b949e; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
 .stTabs [aria-selected="true"] { background:#21262d !important; color:#58a6ff !important; }
 </style>
+
+a[href*="github.com"] { display: none !important; }
+[data-testid="stToolbar"] { display: none !important; }
+#MainMenu { visibility: hidden !important; }
+.stDeployButton { display: none !important; }
+
 """, unsafe_allow_html=True)
 
 # ── Title ────────────────────────────────────────────────────────────────
