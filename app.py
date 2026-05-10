@@ -21,6 +21,7 @@ st.set_page_config(page_title="Item Analysis Pro by Muhaimin Abdullah", page_ico
 # ── Custom CSS ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+.st-emotion-cache-scp8yw {display: none !important;}
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
 
 html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
